@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#3946c9">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Stufenkalender">
+  <title>Stufenkalender</title>
+  <link rel="icon" href="/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+</head>
+<body>
+  <div class="screen" id="screen-loading"><p class="loading">Stufenkalender lädt …</p></div>
+
+  <div class="screen" id="screen-config" hidden>
+    <div class="authcard config">
+      <h1>Stufenkalender</h1>
+      <p class="lead">Die Verbindung zu Supabase ist noch nicht eingerichtet. Trag <code>VITE_SUPABASE_URL</code> und <code>VITE_SUPABASE_ANON_KEY</code> in die Datei <code>.env</code> ein (lokal) oder in die Umgebungsvariablen deines Hostings. Die Anleitung steht in der README.</p>
+    </div>
+  </div>
+
+  <div class="screen" id="screen-login" hidden>
+    <form class="authcard" id="authform" novalidate>
+      <h1>Stufenkalender</h1>
+      <p class="lead" id="authlead">Melde dich an, um deine Termine auf allen Geräten zu sehen.</p>
+      <div class="field" id="a-mailrow"><label for="a-mail">E-Mail</label><input type="email" id="a-mail" autocomplete="email" required></div>
+      <div class="field" id="a-pwrow"><label for="a-pw">Passwort</label><input type="password" id="a-pw" autocomplete="current-password" minlength="6" required></div>
+      <p class="err" id="a-err" hidden></p>
+      <p class="ok" id="a-ok" hidden></p>
+      <button type="submit" class="btn primary" id="a-submit">Anmelden</button>
+      <div class="authlinks">
+        <button type="button" class="linkbtn" id="a-toggle">Noch kein Konto? Konto anlegen</button>
+        <button type="button" class="linkbtn" id="a-forgot">Passwort vergessen?</button>
+      </div>
+    </form>
+  </div>
+
+  <div id="app" hidden>
+    <div class="wrap">
+      <header class="top">
+        <div>
+          <h1>Stufenkalender</h1>
+          <div class="weeknav">
+            <button type="button" class="wbtn plan-only" id="wprev" aria-label="Vorherige Woche">‹</button>
+            <span class="week" id="weeklabel"></span>
+            <button type="button" class="wbtn plan-only" id="wnext" aria-label="Nächste Woche">›</button>
+            <button type="button" class="linkbtn plan-only" id="wtoday" hidden>Zur aktuellen Woche</button>
+          </div>
+          <div class="acct"><span class="sync" id="syncstat" data-s="saved">Gespeichert</span><span id="acctmail"></span><button type="button" class="linkbtn" id="logout">Abmelden</button></div>
+        </div>
+        <div class="headright">
+          <div class="actions plan-only">
+            <button class="btn" id="mgr" type="button">Kategorien verwalten</button>
+            <button class="btn" id="sleepbtn" type="button">Schlafzeiten</button>
+            <button class="btn" id="placebtn" type="button">Orte &amp; Wege</button>
+            <button class="btn" id="impbtn" type="button">Kalender importieren</button>
+            <button class="btn primary" id="add" type="button">+ Termin</button>
+          </div>
+          <div class="modesw" role="group" aria-label="Modus">
+            <button type="button" data-mode="plan" aria-pressed="true">Planen</button>
+            <button type="button" data-mode="daily" aria-pressed="false">Alltag</button>
+          </div>
+        </div>
+      </header>
+
+      <div class="dbar daily-only">
+        <div class="next" id="next"></div>
+        <div class="dfilter">
+          <div class="seg" id="seg" role="group" aria-label="Stufe anzeigen"></div>
+          <div class="minis" id="minis"></div>
+        </div>
+      </div>
+
+      <div class="filters plan-only" id="filters"></div>
+      <div class="bar plan-only">
+        <span class="view" id="view"></span>
+        <button class="linkbtn" id="showall" type="button">Alle einblenden</button>
+        <span class="spacer"></span>
+        <button type="button" class="linkbtn sleepsum" id="sleepsum"></button>
+        <label class="buffer" for="lockm">Festschreiben
+          <select id="lockm"><option value="eve">ab Vorabend 20 Uhr</option><option value="24">24 h vorher</option><option value="2">2 h vorher</option><option value="never">nie automatisch</option></select>
+        </label>
+        <label class="buffer" for="buf">Puffer zwischen Terminen
+          <select id="buf"><option value="0">keiner</option><option value="15">15 min</option><option value="30">30 min</option></select>
+        </label>
+      </div>
+
+      <section class="tray plan-only" id="tray" hidden aria-labelledby="tray-h">
+        <div class="trayhead">
+          <div><h2 id="tray-h">Neu einplanen</h2><p>Zieh die Termine in den Kalender. Grün markierte Bereiche passen.</p></div>
+          <button type="button" class="btn small" id="acceptall" hidden>Alle Vorschläge übernehmen</button>
+        </div>
+        <div class="traylist" id="props"></div>
+      </section>
+
+      <div class="main">
+        <div class="cal"><div class="grid" id="grid"></div></div>
+        <aside class="plan-only">
+          <section class="panel">
+            <h2>Hinweise</h2>
+            <ul class="log" id="log"></ul>
+          </section>
+          <section class="panel hint">
+            <h2>So funktioniert's</h2>
+            <ol>
+              <li>Jede <b>Kategorie</b> gehört zu einer Stufe. Du legst sie unter „Kategorien verwalten“ selbst an.</li>
+              <li><b>Stufe 1 · Fix</b> (rot) bleibt immer, wo du sie hinlegst.</li>
+              <li><b>Stufe 2 · Wichtig</b> (gelb) weicht nur Stufe 1 aus.</li>
+              <li><b>Stufe 3 · Flexibel</b> (grün) weicht allem aus.</li>
+              <li>„nur“ an einer Kategorie zeigt nur diese. Ausgeblendetes blockiert trotzdem Zeit.</li>
+              <li><b>Neu einplanen</b>: Der Planer verschiebt nichts selbst. Muss etwas ausweichen, landet es in der Ablage über dem Kalender. Zieh es an eine grüne Stelle oder tippe auf den Vorschlag.</li>
+              <li><b>Kalender importieren</b>: Termine aus einer .ics-Datei, z. B. deinem Stundenplan. Sie bekommen eine Stufe wie alle anderen Termine.</li>
+              <li><b>Wiederkehrend</b> (↻): Beim Anlegen anhaken. Verschiebst du einen Termin einer Serie, gilt das nur für dieses eine Mal.</li>
+              <li>Jeden Termin kannst du auch direkt im Kalender verschieben, indem du ihn ziehst. Tippen öffnet ihn zum Bearbeiten.</li>
+              <li><b>Festgeschrieben</b> (Schloss) sind Termine kurz vor ihrem Beginn, vergangene Termine und alles, was du selbst festschreibst. Sie bewegen sich nicht mehr.</li>
+              <li><b>Orte</b>: Die dünne Linie über einem Termin ist der Weg dorthin. Flexible Termine bekommen automatisch genug Zeit für den Weg, bei zu knappen Fix-Terminen gibt es einen Hinweis.</li>
+              <li><b>Schlafzeiten</b> (schraffiert) sind tabu für flexible Termine. Liegt ein Fix-Termin darin, bekommst du einen Hinweis.</li>
+            </ol>
+          </section>
+        </aside>
+      </div>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+    <!-- Kalender importieren -->
+    <div class="overlay" id="ov-import" hidden>
+      <form class="dialog wide" id="iform" novalidate>
+        <h2>Kalender importieren</h2>
+        <p class="lead">Lies eine .ics-Datei ein. Google Kalender, Apple Kalender, Outlook und viele Uni-Stundenpläne können ihre Termine in diesem Format exportieren.</p>
+        <label class="drop" id="i-drop" for="i-file">
+          <input type="file" id="i-file" accept=".ics,text/calendar">
+          <span class="dropt" id="i-droptxt"><b>Datei auswählen</b> oder hierher ziehen</span>
+          <span class="dropn">Google exportiert eine .zip-Datei. Entpacke sie vorher und wähle die .ics-Datei darin.</span>
+        </label>
+        <p class="err" id="i-err" hidden></p>
+        <div id="i-opts" hidden>
+          <div class="isum" id="i-sum"></div>
+          <div class="row2">
+            <div class="field"><label for="i-cat">Kategorie für die Termine</label><select id="i-cat"></select></div>
+            <div class="field"><label for="i-range">Zeitraum</label>
+              <select id="i-range"><option value="now">Ab dieser Woche</option><option value="all">Alles, auch Vergangenes</option></select></div>
+          </div>
+          <div class="row2" id="i-newcat">
+            <div class="field"><label for="i-catname">Name der neuen Kategorie</label><input id="i-catname" autocomplete="off"></div>
+            <div class="field"><label for="i-cattier">Stufe</label>
+              <select id="i-cattier"><option value="1">Stufe 1 · Fix</option><option value="2">Stufe 2 · Wichtig</option><option value="3">Stufe 3 · Flexibel</option></select></div>
+          </div>
+          <div class="field"><label for="i-loc">Ortsangaben aus der Datei</label>
+            <select id="i-loc"><option value="note">In die Bemerkung schreiben (z. B. Raumnummern)</option><option value="place">Als Orte anlegen (für Wegzeiten)</option></select></div>
+          <label class="check" for="i-noseed" id="i-noseedrow"><input type="checkbox" id="i-noseed" checked> <span id="i-noseedtxt">Beispieltermine entfernen</span></label>
+        </div>
+        <div class="dfoot"><div class="right">
+          <button type="button" class="btn" id="i-cancel">Abbrechen</button>
+          <button type="submit" class="btn primary" id="i-ok" disabled>Importieren</button>
+        </div></div>
+      </form>
+    </div>
+
+    <!-- Termin ansehen (Alltag) -->
+    <div class="overlay" id="ov-detail" hidden>
+      <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dt-title">
+        <div class="dthead"><span class="dot" id="dt-dot"></span><h2 id="dt-title"></h2></div>
+        <dl class="dtl" id="dt-list"></dl>
+        <div class="dtnote" id="dt-note" hidden></div>
+        <div class="dfoot"><div class="right"><button type="button" class="btn primary" id="dt-close">Schließen</button></div></div>
+      </div>
+    </div>
+
+    <!-- Termin -->
+    <div class="overlay" id="ov-ev" hidden>
+      <form class="dialog" id="form" novalidate>
+        <h2 id="f-head">Neuer Termin</h2>
+        <div class="field"><label for="f-title">Titel</label><input id="f-title" autocomplete="off" placeholder="z. B. Training, Klausur, Treffen mit Lea"></div>
+        <div class="field"><label for="f-cat">Kategorie</label><select id="f-cat"></select>
+          <span class="catinfo" id="f-catinfo"></span></div>
+        <div class="field"><label for="f-loc">Ort</label><select id="f-loc"></select>
+          <span class="catinfo" id="f-locinfo"></span></div>
+        <div class="row2" id="f-newloc" hidden>
+          <div class="field"><label for="f-newname">Name des neuen Orts</label><input id="f-newname" autocomplete="off" placeholder="z. B. Schwimmbad"></div>
+          <div class="field"><label for="f-newmin">Weg ab Zuhause (min)</label><input type="number" id="f-newmin" min="0" max="240" step="5" value="20"></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label for="f-day" id="f-daylbl">Datum</label><input type="date" id="f-day"></div>
+          <div class="field"><label for="f-time">Wunschzeit</label><input type="time" id="f-time" value="18:00" step="900"></div>
+        </div>
+        <div class="field"><span class="lbl" id="f-durlbl">Dauer</span>
+          <div class="durrow" role="group" aria-labelledby="f-durlbl">
+            <label class="durin" for="f-durh"><input type="number" id="f-durh" min="0" max="17" step="1" value="1" inputmode="numeric"><span>Std.</span></label>
+            <label class="durin" for="f-durm"><input type="number" id="f-durm" min="0" max="59" step="5" value="0" inputmode="numeric"><span>Min.</span></label>
+            <span class="durend" id="f-durend"></span>
+          </div>
+          <div class="durchips" id="f-durchips">
+            <button type="button" data-dur="30">30 min</button><button type="button" data-dur="60">1 h</button><button type="button" data-dur="90">1,5 h</button>
+            <button type="button" data-dur="120">2 h</button><button type="button" data-dur="180">3 h</button><button type="button" data-dur="240">4 h</button>
+            <button type="button" data-dur="360">6 h</button><button type="button" data-dur="480">8 h</button>
+          </div>
+        </div>
+        <div class="recbox">
+          <label class="check" for="f-rec"><input type="checkbox" id="f-rec"> Wiederkehrender Termin</label>
+          <div class="recopts" id="f-recopts" hidden>
+            <div class="row2">
+              <div class="field"><label for="f-freq">Wiederholen</label>
+                <select id="f-freq"><option value="daily">Jeden Tag</option><option value="weekly" selected>Jede Woche</option><option value="biweekly">Alle 2 Wochen</option></select></div>
+              <div class="field"><label for="f-until">Endet am (optional)</label><input type="date" id="f-until"></div>
+            </div>
+            <div class="field" id="f-wdrow"><span class="lbl" id="f-wdlbl">An diesen Tagen</span>
+              <div class="wdpick" role="group" aria-labelledby="f-wdlbl" id="f-wd"></div></div>
+            <span class="catinfo" id="f-recinfo"></span>
+          </div>
+        </div>
+        <div class="field"><label for="f-note">Bemerkung</label>
+          <textarea id="f-note" rows="3" maxlength="1000" placeholder="z. B. Raum S14, Hörsaal C · oder dein Trainingsplan: 3×10 Kniebeugen, 3×8 Bankdrücken …"></textarea></div>
+        <label class="check" for="f-locked" id="f-lockrow"><input type="checkbox" id="f-locked"> Festschreiben: nicht mehr automatisch verschieben</label>
+        <p class="err" id="f-err" hidden></p>
+        <div class="dfoot">
+          <div class="dels">
+            <button type="button" class="btn danger" id="f-del" hidden>Löschen</button>
+            <button type="button" class="btn danger" id="f-delone" hidden>Nur diesen Termin löschen</button>
+          </div>
+          <div class="right">
+            <button type="button" class="btn" id="f-cancel">Abbrechen</button>
+            <button type="submit" class="btn primary">Speichern</button>
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <!-- Kategorien -->
+    <div class="overlay" id="ov-cat" hidden>
+      <form class="dialog wide" id="cform" novalidate>
+        <h2>Kategorien verwalten</h2>
+        <p class="lead">Lege eigene Kategorien an und gib jeder eine Stufe. Die Farbe ergibt sich aus der Stufe: Rot für Fix, Gelb für Wichtig, Grün für Flexibel.</p>
+        <div class="clist" id="clist"></div>
+        <div><button type="button" class="btn small" id="c-add">+ Kategorie</button></div>
+        <p class="err" id="c-err" hidden></p>
+        <div class="dfoot"><div class="right">
+          <button type="button" class="btn" id="c-cancel">Abbrechen</button>
+          <button type="submit" class="btn primary">Speichern</button>
+        </div></div>
+      </form>
+    </div>
+
+    <!-- Schlafzeiten -->
+    <div class="overlay" id="ov-sleep" hidden>
+      <form class="dialog wide" id="sform" novalidate>
+        <h2>Schlafzeiten</h2>
+        <p class="lead">In diesen Zeiten plant der Planer keine flexiblen Termine ein. Fix-Termine bleiben, wo sie sind, werden aber markiert.</p>
+        <div class="field"><label for="s-mode">Wie unterschiedlich schläfst du?</label>
+          <select id="s-mode">
+            <option value="same">Jeden Tag gleich</option>
+            <option value="split">Woche und Wochenende getrennt</option>
+            <option value="daily">Jeden Tag einzeln</option>
+          </select></div>
+        <div class="sblock" id="s-daily">
+          <div class="daylist" id="s-days"></div>
+          <div><button type="button" class="btn small" id="s-copy">Montag auf alle Tage übertragen</button></div>
+          <span class="note">„Schlafen gehen“ ist der Abend des jeweiligen Tages.</span>
+        </div>
+        <div class="sgrid" id="s-simple">
+          <div class="sblock">
+            <h3 id="s-wd-h">Unter der Woche</h3>
+            <div class="row2">
+              <div class="field"><label for="s-wd-wake">Aufstehen</label><input type="time" id="s-wd-wake" step="900"></div>
+              <div class="field"><label for="s-wd-bed">Schlafen gehen</label><input type="time" id="s-wd-bed" step="900"></div>
+            </div>
+            <span class="note" id="s-wd-note">Gilt jeden Tag.</span>
+          </div>
+          <div class="sblock" id="s-we">
+            <h3>Wochenende</h3>
+            <div class="row2">
+              <div class="field"><label for="s-we-wake">Aufstehen</label><input type="time" id="s-we-wake" step="900"></div>
+              <div class="field"><label for="s-we-bed">Schlafen gehen</label><input type="time" id="s-we-bed" step="900"></div>
+            </div>
+            <span class="note">Aufstehen gilt Sa und So, Schlafen gehen gilt Fr und Sa.</span>
+          </div>
+        </div>
+        <p class="note" style="margin:0;font-size:12.5px;color:var(--muted)">Schlafenszeiten nach Mitternacht (z. B. 00:30) zählen bis zum Ende des Tages.</p>
+        <p class="err" id="s-err" hidden></p>
+        <div class="dfoot"><div class="right">
+          <button type="button" class="btn" id="s-cancel">Abbrechen</button>
+          <button type="submit" class="btn primary">Speichern</button>
+        </div></div>
+      </form>
+    </div>
+
+    <!-- Änderungsvorschläge -->
+    <div class="overlay" id="ov-prop" hidden>
+      <form class="dialog" id="ppform" novalidate role="alertdialog" aria-labelledby="pp-head">
+        <h2 id="pp-head">Das ändert sich</h2>
+        <p class="lead" id="pp-lead"></p>
+        <ul class="pplist" id="pp-list"></ul>
+        <p class="err" id="pp-err" hidden></p>
+        <div class="dfoot"><div class="right">
+          <button type="button" class="btn" id="pp-later">Später entscheiden</button>
+          <button type="submit" class="btn primary" id="pp-ok">Übernehmen</button>
+        </div></div>
+      </form>
+    </div>
+
+    <!-- Orte & Wege -->
+    <div class="overlay" id="ov-place" hidden>
+      <form class="dialog wide" id="pform" novalidate>
+        <h2>Orte &amp; Wege</h2>
+        <p class="lead">Trag deine Orte und die Wegzeiten dazwischen ein. Der Planer geht davon aus, dass du vom Ort deines vorherigen Termins kommst, am Morgen von Zuhause.</p>
+        <div class="sblock">
+          <h3>Deine Orte</h3>
+          <div class="plist" id="plist"></div>
+          <div><button type="button" class="btn small" id="p-add">+ Ort</button></div>
+        </div>
+        <div class="sblock">
+          <div class="field"><label for="p-from">Wegzeiten ab</label><select id="p-from"></select></div>
+          <div class="tlist" id="tlist"></div>
+          <span class="note">Leere Felder rechnet der Planer mit 30 min und markiert sie als geschätzt. Die Zeiten gelten in beide Richtungen.</span>
+        </div>
+        <p class="err" id="p-err" hidden></p>
+        <div class="dfoot"><div class="right">
+          <button type="button" class="btn" id="p-cancel">Abbrechen</button>
+          <button type="submit" class="btn primary">Speichern</button>
+        </div></div>
+      </form>
+    </div>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
