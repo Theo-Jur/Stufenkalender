@@ -13,7 +13,16 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
 </head>
 <body>
-  <div class="screen" id="screen-loading"><p class="loading">Stufenkalender lädt …</p></div>
+  <div class="screen" id="screen-loading">
+    <div class="authcard loadcard">
+      <p class="loading">Stufenkalender lädt …</p>
+      <div id="loadhelp" hidden>
+        <p class="lead">Das dauert ungewöhnlich lange. Meist ist die Verbindung zum Server gestört, z. B. durch ein WLAN mit Filter, ein VPN oder einen Werbeblocker.</p>
+        <p class="err" id="loaderr" hidden></p>
+        <button type="button" class="btn primary" id="reloadbtn">Neu laden</button>
+      </div>
+    </div>
+  </div>
 
   <div class="screen" id="screen-config" hidden>
     <div class="authcard config">

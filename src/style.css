@@ -353,3 +353,7 @@ aside{display:flex;flex-direction:column;gap:14px;min-width:0}
 .authlinks{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
 .loading{color:var(--muted);font-size:14px}
 .config code{font-family:var(--f-mono);font-size:12.5px;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:1px 5px}
+
+.loadcard{align-items:center;text-align:center}
+#loadhelp{display:flex;flex-direction:column;gap:10px}
+#loaderr{font-family:var(--f-mono);font-size:12px;overflow-wrap:anywhere}

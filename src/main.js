@@ -18,22 +18,46 @@ let booted = false;
 // Kommt man über den "Passwort vergessen"-Link, steht type=recovery in der Adresse
 let authMode = /type=recovery/.test(location.hash) ? 'recover' : 'login'; // login | signup | forgot | recover
 
+/* ---------- Hängt der Start? Dann Hilfe und Fehlermeldung zeigen ---------- */
+const startErrors = [];
+function noteError(msg) {
+  if (!msg) return;
+  startErrors.push(String(msg));
+  if (!$('screen-loading').hidden) showLoadHelp();
+}
+window.addEventListener('error', (e) => noteError(e.message));
+window.addEventListener('unhandledrejection', (e) => noteError(e.reason && (e.reason.message || e.reason)));
+function showLoadHelp() {
+  $('loadhelp').hidden = false;
+  $('loaderr').hidden = !startErrors.length;
+  $('loaderr').textContent = startErrors.length ? 'Fehlermeldung: ' + startErrors.slice(-3).join(' · ') : '';
+}
+setTimeout(() => { if (!$('screen-loading').hidden) showLoadHelp(); }, 10000);
+$('reloadbtn').onclick = () => location.reload();
+
 if (!configured) {
   show('screen-config');
 } else {
-  init();
+  init().catch((e) => noteError(e && e.message));
 }
 
 async function init() {
   supabase.auth.onAuthStateChange((event, session) => {
-    if (event === 'PASSWORD_RECOVERY') { showLogin('recover'); return; }
-    if (event === 'SIGNED_OUT') { location.reload(); return; }
-    if (event === 'SIGNED_IN' && session && !booted && authMode !== 'recover') boot(session);
+    // Nichts direkt hier drin aufrufen, das wieder Supabase benutzt (kann sonst hängen bleiben)
+    setTimeout(() => {
+      if (event === 'PASSWORD_RECOVERY') { showLogin('recover'); return; }
+      if (event === 'SIGNED_OUT') { location.reload(); return; }
+      if (event === 'SIGNED_IN' && session && !booted && authMode !== 'recover') boot(session).catch((e) => noteError(e && e.message));
+    }, 0);
   });
-  const { data: { session } } = await supabase.auth.getSession();
+  const { data: { session } } = await withTimeout(supabase.auth.getSession(), 10000, 'Anmeldestatus');
   if (authMode === 'recover') showLogin('recover');
-  else if (session) boot(session);
+  else if (session) await boot(session);
   else showLogin('login');
+}
+
+function withTimeout(promise, ms, what) {
+  return Promise.race([promise, new Promise((_, rej) => setTimeout(() => rej(new Error(what + ': keine Antwort vom Server nach ' + ms / 1000 + ' s')), ms))]);
 }
 
 /* ---------- Kalender starten ---------- */

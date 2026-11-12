@@ -29,7 +29,10 @@ export function createStore({ client, userId, onRemote, onStatus }) {
   }
 
   async function fetchRow() {
-    const { data, error } = await client.from(TABLE).select('data, updated_at').eq('user_id', userId).maybeSingle();
+    // Nach 8 Sekunden aufgeben und mit der lokalen Kopie weitermachen
+    const ctrl = new AbortController(); const t = setTimeout(() => ctrl.abort(), 8000);
+    const { data, error } = await client.from(TABLE).select('data, updated_at').eq('user_id', userId).abortSignal(ctrl.signal).maybeSingle();
+    clearTimeout(t);
     if (error) throw error;
     return data;
   }
@@ -53,9 +56,12 @@ export function createStore({ client, userId, onRemote, onStatus }) {
       }
       return cache ? cache.data : null;
     } catch (e) {
+      // Ohne lokale Kopie lieber nicht starten: sonst würde ein leerer Kalender die Daten auf dem Server überschreiben
+      if (!cache) throw new Error('Kalender konnte nicht geladen werden (' + (e && e.message ? e.message : 'keine Verbindung') + ')');
       console.warn('Laden fehlgeschlagen, nutze lokale Kopie', e);
+      if (!cache.dirty) { lastJson = JSON.stringify(cache.data); lastStamp = cache.stamp; }
       status('offline');
-      return cache ? cache.data : null;
+      return cache.data;
     }
   }
 
