@@ -1,4 +1,5 @@
 import './style.css';
+import { linkError } from './urlcheck.js';
 import { supabase, configured } from './supabase.js';
 import { createStore } from './store.js';
 import { startApp } from './app.js';
@@ -46,14 +47,27 @@ async function init() {
     // Nichts direkt hier drin aufrufen, das wieder Supabase benutzt (kann sonst hängen bleiben)
     setTimeout(() => {
       if (event === 'PASSWORD_RECOVERY') { showLogin('recover'); return; }
-      if (event === 'SIGNED_OUT') { location.reload(); return; }
+      // Nur nach echtem Abmelden neu laden, nie beim Start (sonst Endlosschleife)
+      if (event === 'SIGNED_OUT') { if (booted) location.reload(); return; }
       if (event === 'SIGNED_IN' && session && !booted && authMode !== 'recover') boot(session).catch((e) => noteError(e && e.message));
     }, 0);
   });
   const { data: { session } } = await withTimeout(supabase.auth.getSession(), 10000, 'Anmeldestatus');
   if (authMode === 'recover') showLogin('recover');
   else if (session) await boot(session);
-  else showLogin('login');
+  else {
+    showLogin('login');
+    if (linkError) showLinkError();
+  }
+}
+
+function showLinkError() {
+  const expired = /expired|invalid|otp/i.test(linkError.code + ' ' + linkError.description);
+  $('a-err').textContent = expired
+    ? 'Der Link aus der E-Mail ist abgelaufen oder wurde schon benutzt. Versuch dich einfach mit E-Mail und Passwort anzumelden. Klappt das nicht, lass dir unten einen neuen Bestätigungslink schicken.'
+    : 'Der Link aus der E-Mail hat nicht funktioniert (' + (linkError.description || linkError.code) + '). Melde dich mit E-Mail und Passwort an oder lass dir einen neuen Link schicken.';
+  $('a-err').hidden = false;
+  $('a-resend').hidden = false;
 }
 
 function withTimeout(promise, ms, what) {
@@ -77,6 +91,8 @@ async function boot(session) {
   app = startApp({ initial, onChange: (data) => store.save(data) });
   store.startLiveUpdates();
   $('acctmail').textContent = session.user.email || '';
+  // Anmeldedaten aus dem E-Mail-Link nicht in der Adresse stehen lassen
+  if (/access_token|refresh_token|type=/.test(location.hash)) history.replaceState(null, '', location.pathname);
   $('logout').onclick = async () => {
     await store.flush();
     store.clearLocal();
@@ -114,6 +130,7 @@ function showLogin(mode) {
   $('a-toggle').hidden = !cfg.toggle;
   $('a-toggle').textContent = cfg.toggle;
   $('a-forgot').hidden = !cfg.forgot;
+  $('a-resend').hidden = true;
   $('a-err').hidden = true;
   $('a-ok').hidden = true;
   show('screen-login');
@@ -121,6 +138,18 @@ function showLogin(mode) {
 
 $('a-toggle').onclick = () => showLogin(authMode === 'login' ? 'signup' : 'login');
 $('a-forgot').onclick = () => showLogin('forgot');
+$('a-resend').onclick = async () => {
+  const email = $('a-mail').value.trim();
+  const fail = (m) => { $('a-err').textContent = m; $('a-err').hidden = false; $('a-ok').hidden = true; };
+  if (!/^\S+@\S+\.\S+$/.test(email)) return fail('Trag oben deine E-Mail-Adresse ein, dann schicke ich den Link erneut.');
+  $('a-resend').disabled = true;
+  try {
+    const { error } = await supabase.auth.resend({ type: 'signup', email, options: { emailRedirectTo: location.origin } });
+    if (error) return fail(translate(error.message));
+    $('a-ok').textContent = 'Neuer Bestätigungslink ist unterwegs. Klick ihn bitte nur einmal an.';
+    $('a-ok').hidden = false; $('a-err').hidden = true;
+  } catch (e) { fail(translate(e && e.message)); } finally { $('a-resend').disabled = false; }
+};
 
 $('authform').addEventListener('submit', async (ev) => {
   ev.preventDefault();
@@ -133,7 +162,7 @@ $('authform').addEventListener('submit', async (ev) => {
   try {
     if (authMode === 'login') {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) return fail(translate(error.message));
+      if (error) { fail(translate(error.message)); if (/not confirmed/i.test(error.message)) $('a-resend').hidden = false; return; }
     } else if (authMode === 'signup') {
       const { data, error } = await supabase.auth.signUp({ email, password, options: { emailRedirectTo: location.origin } });
       if (error) return fail(translate(error.message));
