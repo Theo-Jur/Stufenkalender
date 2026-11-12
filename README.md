@@ -21,7 +21,7 @@ Du brauchst drei kostenlose Konten: **GitHub** (Code), **Supabase** (Login und D
 1. Öffne dein Projekt auf [supabase.com](https://supabase.com).
 2. Klicke links auf **SQL Editor**, füge den Inhalt von [`supabase/schema.sql`](supabase/schema.sql) ein und klicke auf **Run**.
    Damit entsteht die Tabelle für deinen Kalender, und jedes Konto darf nur seine eigenen Daten sehen.
-3. Öffne **Project Settings → API** (in neueren Versionen „Data API“ und „API Keys“) und notiere:
+3. Trag in [`src/config.js`](src/config.js) deine Werte ein. Du findest sie unter **Project Settings → API Keys**:
    - die **Project URL**, z. B. `https://abcdefgh.supabase.co`
    - den **anon public**- bzw. **publishable**-Schlüssel
 
@@ -31,13 +31,7 @@ Du brauchst drei kostenlose Konten: **GitHub** (Code), **Supabase** (Login und D
 
 1. Melde dich auf [vercel.com](https://vercel.com) mit deinem GitHub-Konto an.
 2. **Add New → Project**, dann das Repository `stufenkalender` importieren. Vercel erkennt Vite automatisch.
-3. Trag unter **Environment Variables** ein:
-
-   | Name | Wert |
-   |---|---|
-   | `VITE_SUPABASE_URL` | deine Project URL |
-   | `VITE_SUPABASE_ANON_KEY` | dein anon- bzw. publishable-Schlüssel |
-
+3. Environment Variables brauchst du nicht. Die Verbindung zu Supabase steht in `src/config.js`.
 4. Klicke auf **Deploy**. Danach bekommst du eine Adresse wie `https://stufenkalender-xyz.vercel.app`.
 
 Jede Änderung, die auf GitHub landet, stellt Vercel ab dann automatisch online.
@@ -68,7 +62,6 @@ Voraussetzung: [Node.js](https://nodejs.org) ab Version 20.
 
 ```bash
 npm install
-cp .env.example .env      # dann URL und anon-Schlüssel eintragen
 npm run dev               # startet die App unter http://localhost:5173
 npm run build             # baut die fertige Version in den Ordner dist/
 ```
@@ -81,6 +74,7 @@ npm run build             # baut die fertige Version in den Ordner dist/
 | `src/main.js` | Start, Anmeldung, Verbindung von App und Speicher |
 | `src/app.js` | Der eigentliche Kalender: Planer, Darstellung, Drag & Drop, Import |
 | `src/store.js` | Speichern in Supabase, lokale Kopie für offline, Abgleich zwischen Geräten |
+| `src/config.js` | Adresse und öffentlicher Schlüssel deines Supabase-Projekts |
 | `src/supabase.js` | Verbindung zu Supabase |
 | `src/style.css` | Gestaltung, helles und dunkles Design |
 | `supabase/schema.sql` | Tabelle und Zugriffsschutz |
