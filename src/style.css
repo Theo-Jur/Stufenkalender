@@ -83,7 +83,6 @@ body.dragging,body.dragging *{cursor:grabbing!important;user-select:none}
 /* Wochen & Wiederholung */
 .weeknav{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .weeknav .week{margin:0;font-family:var(--f-display);font-size:16px;font-weight:600;color:var(--fg);min-width:15ch;text-align:center;font-variant-numeric:tabular-nums}
-body.daily .weeknav .week{text-align:left;min-width:0}
 .wbtn{border:1px solid var(--line-strong);background:var(--surface);border-radius:8px;width:34px;height:32px;font-size:16px;line-height:1;color:var(--fg)}
 .wbtn:hover{border-color:var(--muted)}
 .recbox{display:flex;flex-direction:column;gap:10px;border:1px solid var(--line);border-radius:10px;padding:10px 12px}

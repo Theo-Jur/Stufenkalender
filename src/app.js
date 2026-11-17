@@ -223,7 +223,7 @@ function lanes(items){
 
 function shownDays(){
   const w=weekDays();
-  if(mode==='daily'&&narrow.matches) return [TODAY,TODAY+1,TODAY+2].filter(d=>w.includes(d));
+  if(mode==='daily'&&narrow.matches&&VIEW===CURWEEK) return [TODAY,TODAY+1,TODAY+2].filter(d=>w.includes(d));
   return w;
 }
 function renderGrid(plan){
@@ -296,6 +296,7 @@ function renderNext(plan){
   if(!cur.length&&!up.length) html='<div class="nx"><span class="lbl">Als Nächstes</span><span class="tt">Diese Woche steht nichts mehr an.</span></div>';
   if(PROPS) html+=`<div class="pbanner">${PROPS} Vorschl${PROPS>1?'äge warten':'ag wartet'} auf deine Bestätigung. <button type="button" data-mode="plan">Im Planen-Modus prüfen</button></div>`;
   $('next').innerHTML=html;
+  $('next').hidden=VIEW!==CURWEEK; // Jetzt/Als Nächstes gilt nur für die aktuelle Woche
 }
 function activeTier(){
   const vis=state.cats.filter(c=>!state.hidden[c.id]);
