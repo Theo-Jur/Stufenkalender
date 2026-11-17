@@ -59,7 +59,7 @@
             <button type="button" class="wbtn plan-only" id="wnext" aria-label="Nächste Woche">›</button>
             <button type="button" class="linkbtn plan-only" id="wtoday" hidden>Zur aktuellen Woche</button>
           </div>
-          <div class="acct"><span class="sync" id="syncstat" data-s="saved">Gespeichert</span><span id="acctmail"></span><button type="button" class="linkbtn" id="logout">Abmelden</button></div>
+          <div class="acct"><span class="sync" id="syncstat" data-s="saved">Gespeichert</span></div>
         </div>
         <div class="headright">
           <div class="actions plan-only">
@@ -75,6 +75,13 @@
             <button type="button" data-mode="daily" aria-pressed="false">Alltag</button>
           </div>
         </div>
+          <div class="acctwrap corner">
+            <button type="button" class="avatar" id="acctbtn" aria-haspopup="true" aria-expanded="false" aria-controls="acctmenu" aria-label="Konto" title="Konto"></button>
+            <div class="acctmenu" id="acctmenu" hidden>
+              <div class="amhead"><span class="avatar big" id="acctbig" aria-hidden="true"></span><div><div class="amlabel">Angemeldet als</div><div class="ammail" id="acctmail"></div></div></div>
+              <button type="button" class="btn small" id="logout">Abmelden</button>
+            </div>
+          </div>
       </header>
 
       <div class="dbar daily-only">

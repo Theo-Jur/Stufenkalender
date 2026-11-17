@@ -75,7 +75,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   await B.p.evaluate(() => document.dispatchEvent(new Event('visibilitychange'))); await sleep(600);
   await B.p.click('[data-mode="daily"]'); await sleep(300); await B.p.screenshot({ path: OUT + '/3-alltag-handy.png' });
   // Abmelden
-  await A.p.click('#logout'); await A.p.waitForSelector('#screen-login:not([hidden])', { timeout: 5000 }); console.log('logout ok, cache cleared:', await A.p.evaluate(() => Object.keys(localStorage).filter((k) => k.startsWith('stufenkalender-cache')).length === 0));
+  await A.p.click('#acctbtn'); await A.p.click('#logout'); await A.p.waitForSelector('#screen-login:not([hidden])', { timeout: 5000 }); console.log('logout ok, cache cleared:', await A.p.evaluate(() => Object.keys(localStorage).filter((k) => k.startsWith('stufenkalender-cache')).length === 0));
   console.log('ERRORS', errors);
   await browser.close(); srv.close();
 })().catch((e) => { console.log('FAIL', e.message); process.exit(1); });

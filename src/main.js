@@ -90,15 +90,30 @@ async function boot(session) {
   show('app');
   app = startApp({ initial, onChange: (data) => store.save(data) });
   store.startLiveUpdates();
-  $('acctmail').textContent = session.user.email || '';
+  const mail = session.user.email || '';
+  const letter = (mail.trim()[0] || '?').toUpperCase();
+  $('acctmail').textContent = mail;
+  $('acctbtn').textContent = letter; $('acctbig').textContent = letter;
+  $('acctbtn').title = 'Konto: ' + mail;
   // Anmeldedaten aus dem E-Mail-Link nicht in der Adresse stehen lassen
   if (/access_token|refresh_token|type=/.test(location.hash)) history.replaceState(null, '', location.pathname);
   $('logout').onclick = async () => {
+    setAcctMenu(false);
     await store.flush();
     store.clearLocal();
     await supabase.auth.signOut();
   };
 }
+
+/* ---------- Konto-Kreis oben rechts ---------- */
+
+function setAcctMenu(open) {
+  $('acctmenu').hidden = !open;
+  $('acctbtn').setAttribute('aria-expanded', String(open));
+}
+$('acctbtn').addEventListener('click', (ev) => { ev.stopPropagation(); setAcctMenu($('acctmenu').hidden); });
+document.addEventListener('click', (ev) => { if (!$('acctmenu').hidden && !ev.target.closest('.acctwrap')) setAcctMenu(false); });
+document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape' && !$('acctmenu').hidden) { setAcctMenu(false); $('acctbtn').focus(); } });
 
 /* ---------- Anmeldung ---------- */
 
