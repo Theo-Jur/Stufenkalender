@@ -408,12 +408,14 @@ button.avatar[aria-expanded="true"]{box-shadow:0 0 0 3px var(--surface),0 0 0 5p
 .tgroup .linkbtn{color:inherit;text-decoration:underline;text-underline-offset:2px}
 .tgroup .empty{color:inherit;opacity:.85;font-size:12.5px}
 .tgroup .bstyle{background:transparent;border-color:var(--tink)}
-.tgroup .chip{background:var(--surface);border-color:var(--tedge);color:var(--fg)}
-.tgroup .chip .ctog{color:var(--fg)}
-.tgroup .chip .dot{background:var(--tfill);box-shadow:0 0 0 1px var(--tedge)}
-.tgroup .chip[data-on="false"]{background:transparent;border-color:var(--tink);border-style:dashed}
-.tgroup .chip[data-on="false"] .ctog,.tgroup .chip[data-on="false"] .count,.tgroup .chip[data-on="false"] .solo{color:var(--tink);opacity:.85}
-.tgroup .chip[data-on="false"] .dot{background:transparent;border:1.5px solid var(--tink);box-shadow:none}
+.tgroup .chip{background:transparent;border:1.5px solid var(--tink)}
+.tgroup .chip .ctog,.tgroup .chip .count,.tgroup .chip .solo{color:var(--tink)}
+.tgroup .chip .solo{border-left-color:var(--tink)}
+.tgroup .chip .dot{background:var(--tink);box-shadow:none}
+.tgroup .chip[data-on="false"]{background:var(--surface);border:1.5px dashed var(--tedge)}
+.tgroup .chip[data-on="false"] .ctog,.tgroup .chip[data-on="false"] .count,.tgroup .chip[data-on="false"] .solo{color:var(--muted);opacity:1}
+.tgroup .chip[data-on="false"] .solo{border-left-color:var(--line-strong)}
+.tgroup .chip[data-on="false"] .dot{background:transparent;border:1.5px solid var(--tedge);box-shadow:none}
 .tgroup[data-on="false"]{opacity:.5}
 .tgroup[data-on="false"] .ttog{opacity:1}
 .bstyle.s1{background:var(--red-fill);border-color:var(--red-edge)}.bstyle.s2{background:var(--yellow-fill);border-color:var(--yellow-edge)}.bstyle.s3{background:var(--green-fill);border-color:var(--green-edge)}
