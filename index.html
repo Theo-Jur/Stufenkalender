@@ -52,31 +52,17 @@
   <div id="app" hidden>
     <div class="wrap">
       <header class="top">
-        <div>
+        <div class="titlebox">
           <h1>Stufenkalender</h1>
-          <div class="weeknav">
-            <button type="button" class="wbtn plan-only" id="wprev" aria-label="Vorherige Woche">‹</button>
-            <span class="week" id="weeklabel"></span>
-            <button type="button" class="wbtn plan-only" id="wnext" aria-label="Nächste Woche">›</button>
-            <button type="button" class="linkbtn plan-only" id="wtoday" hidden>Zur aktuellen Woche</button>
-          </div>
           <div class="acct"><span class="sync" id="syncstat" data-s="saved">Gespeichert</span></div>
         </div>
-        <div class="headright">
-          <div class="actions plan-only">
-            <button class="btn" id="mgr" type="button">Kategorien verwalten</button>
-            <button class="btn" id="sleepbtn" type="button">Schlafzeiten</button>
-            <button class="btn" id="placebtn" type="button">Orte &amp; Wege</button>
-            <button class="btn" id="impbtn" type="button">Kalender importieren</button>
-            <button class="btn primary" id="add" type="button">+ Termin</button>
-          </div>
+        <div class="topright">
           <button type="button" class="infobtn" id="helpbtn" aria-label="So funktioniert's" title="So funktioniert's">i</button>
           <div class="modesw" role="group" aria-label="Modus">
             <button type="button" data-mode="plan" aria-pressed="true">Planen</button>
             <button type="button" data-mode="daily" aria-pressed="false">Alltag</button>
           </div>
-        </div>
-          <div class="acctwrap corner">
+          <div class="acctwrap">
             <button type="button" class="avatar" id="acctbtn" aria-haspopup="true" aria-expanded="false" aria-controls="acctmenu" aria-label="Konto" title="Konto"></button>
             <div class="acctmenu" id="acctmenu" hidden>
               <div class="amhead"><span class="avatar big" id="acctbig" aria-hidden="true"></span><div><div class="amlabel">Angemeldet als</div><div class="ammail" id="acctmail"></div></div></div>
@@ -85,6 +71,22 @@
               <button type="button" class="btn small" id="logout">Abmelden</button>
             </div>
           </div>
+        </div>
+        <div class="actions plan-only">
+          <button class="btn" id="mgr" type="button">Kategorien verwalten</button>
+          <button class="btn" id="sleepbtn" type="button">Schlafzeiten</button>
+          <button class="btn" id="placebtn" type="button">Orte &amp; Wege</button>
+          <button class="btn" id="impbtn" type="button">Kalender importieren</button>
+          <button class="btn primary" id="add" type="button">+ Termin</button>
+          <div class="settings">
+            <label class="buffer" for="lockm">Festschreiben
+              <select id="lockm"><option value="eve">ab Vorabend 20 Uhr</option><option value="24">24 h vorher</option><option value="2">2 h vorher</option><option value="never">nie automatisch</option></select>
+            </label>
+            <label class="buffer" for="buf">Puffer zwischen Terminen
+              <select id="buf"><option value="0">keiner</option><option value="15">15 min</option><option value="30">30 min</option></select>
+            </label>
+          </div>
+        </div>
       </header>
 
       <div class="dbar daily-only">
@@ -96,17 +98,16 @@
       </div>
 
       <div class="filters plan-only" id="filters"></div>
-      <div class="bar plan-only">
-        <span class="view" id="view"></span>
-        <button class="linkbtn" id="showall" type="button">Alle einblenden</button>
+      <div class="bar">
+        <div class="weeknav">
+          <button type="button" class="wbtn plan-only" id="wprev" aria-label="Vorherige Woche">‹</button>
+          <span class="week" id="weeklabel"></span>
+          <button type="button" class="wbtn plan-only" id="wnext" aria-label="Nächste Woche">›</button>
+          <button type="button" class="linkbtn plan-only" id="wtoday" hidden>Zur aktuellen Woche</button>
+        </div>
         <span class="spacer"></span>
-        <button type="button" class="linkbtn sleepsum" id="sleepsum"></button>
-        <label class="buffer" for="lockm">Festschreiben
-          <select id="lockm"><option value="eve">ab Vorabend 20 Uhr</option><option value="24">24 h vorher</option><option value="2">2 h vorher</option><option value="never">nie automatisch</option></select>
-        </label>
-        <label class="buffer" for="buf">Puffer zwischen Terminen
-          <select id="buf"><option value="0">keiner</option><option value="15">15 min</option><option value="30">30 min</option></select>
-        </label>
+        <span class="view plan-only" id="view"></span>
+        <button class="linkbtn plan-only" id="showall" type="button">Alle einblenden</button>
       </div>
 
       <section class="tray plan-only" id="tray" hidden aria-labelledby="tray-h">

@@ -380,10 +380,6 @@ function goWeek(w){VIEW=w; prevPlan=null; render(); const cal=document.querySele
 $('wprev').onclick=()=>goWeek(VIEW-1);
 $('wnext').onclick=()=>goWeek(VIEW+1);
 $('wtoday').onclick=()=>goWeek(CURWEEK);
-function renderSleepSum(){
-  const s=state.sleep, t=x=>`<b>${fmt(x.bed)}–${fmt(x.wake)}</b>`;
-  $('sleepsum').innerHTML='Schlaf: '+(s.mode==='daily'?'<b>pro Tag eingestellt</b>':t(s.wd)+(s.mode==='split'?' · Wochenende '+t(s.we):''));
-}
 function render(){
   const wakes=[0,1,2,3,4,5,6].map(wakeOf);
   EV=buildEV();
@@ -391,7 +387,6 @@ function render(){
   const plan=schedule(EV,state.buffer); PLAN=plan;
   renderWeek();
   TRAVEL=computeTravel(plan);
-  renderSleepSum();
   flashIds=new Set();
   if(prevPlan) Object.keys(plan).forEach(id=>{const a=plan[id],b=prevPlan[id]; if(b&&!a.unplaced&&!b.unplaced&&(a.day!==b.day||a.start!==b.start)) flashIds.add(id);});
   prevPlan=plan;
@@ -596,7 +591,7 @@ $('s-mode').addEventListener('change',()=>{
   }
   syncSplit();});
 $('s-copy').onclick=()=>{const w=$('sd-w-0').value,b=$('sd-b-0').value; for(let i=1;i<7;i++){$('sd-w-'+i).value=w;$('sd-b-'+i).value=b;}};
-$('sleepbtn').onclick=openSleep; $('sleepsum').onclick=openSleep;
+$('sleepbtn').onclick=openSleep;
 $('s-cancel').onclick=()=>{$('ov-sleep').hidden=true;};
 $('sform').addEventListener('submit',ev=>{
   ev.preventDefault(); const before=propSnapshot(); const fail=m=>{$('s-err').textContent=m;$('s-err').hidden=false;};
