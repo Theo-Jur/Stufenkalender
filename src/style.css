@@ -434,11 +434,15 @@ button.avatar[aria-expanded="true"]{box-shadow:0 0 0 3px var(--surface),0 0 0 5p
 #ov-settings .row2 select{width:100%;border:1px solid var(--line-strong);background:var(--bg);border-radius:8px;padding:8px 10px}
 
 /* Großer Termin-Knopf rechts neben dem Kalender */
-.addbig{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:14px 16px;font-size:16px;font-weight:600;border-radius:12px}
-.addbig .plus{font-size:22px;line-height:1;font-weight:500}
+.addbig{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:7px 16px;font-size:14.5px;font-weight:600;border-radius:999px}
+.addbig .plus{font-size:19px;line-height:1;font-weight:500}
+/* Ohne Hinweise: keine rechte Spalte, Kalender volle Breite */
+.main:has(#logpanel[hidden]){grid-template-columns:minmax(0,1fr)}
+.main:has(#logpanel[hidden]) aside{display:none}
 @media (max-width:980px){
   /* Auf schmalen Bildschirmen: runder Knopf unten rechts, immer mit dem Daumen erreichbar */
-  .addbig{position:fixed;right:18px;bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:45;width:auto;padding:0 20px;height:56px;border-radius:999px;box-shadow:0 6px 18px rgba(0,0,0,.25)}
+  .addbig{position:fixed;right:18px;bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:45;width:auto;padding:0 20px;height:56px;border-radius:999px;box-shadow:0 6px 18px rgba(0,0,0,.25);font-size:16px}
+  .addbig .plus{font-size:22px}
   body:not(.daily) .toast{bottom:calc(88px + env(safe-area-inset-bottom,0px))}
   body:not(.daily) .main{padding-bottom:70px}
 }
