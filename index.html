@@ -108,8 +108,8 @@
         <div class="cal"><div class="grid" id="grid"></div></div>
         <aside class="plan-only">
           <button class="btn primary addbig" id="add" type="button" aria-label="Neuer Termin"><span class="plus" aria-hidden="true">+</span><span class="lbl">Termin</span></button>
-          <section class="panel">
-            <h2>Hinweise</h2>
+          <section class="panel logpanel" id="logpanel" hidden>
+            <h2>Hinweise <span class="logcount" id="logcount"></span></h2>
             <ul class="log" id="log"></ul>
           </section>
         </aside>
@@ -181,7 +181,9 @@
           <li><b>Stufe 1 · Fix</b> (rot) bleibt immer, wo du sie hinlegst.</li>
           <li><b>Stufe 2 · Wichtig</b> (gelb) weicht nur Stufe 1 aus.</li>
           <li><b>Stufe 3 · Flexibel</b> (grün) weicht allem aus.</li>
-          <li>„nur“ an einer Kategorie zeigt nur diese. Ausgeblendetes blockiert trotzdem Zeit.</li>
+          <li><b>Kategorie-Knöpfe</b>: Tippen blendet ein oder aus. <b>Lange drücken</b> (am Computer Rechtsklick) zeigt nur diese Kategorie, nochmal lange drücken zeigt wieder alles. Ausgeblendetes blockiert trotzdem Zeit.</li>
+          <li><b>Stufen-Kästen</b>: Antippen zeigt nur diese Stufe, ein zweiter Kasten kommt dazu.</li>
+          <li><b>Wochen blättern</b>: mit den Pfeilen ‹ › oder auf dem Handy im Kalender seitlich wischen.</li>
           <li><b>Neu einplanen</b>: Der Planer verschiebt nichts selbst. Muss etwas ausweichen, landet es in der Ablage über dem Kalender. Zieh es an eine grüne Stelle oder tippe auf den Vorschlag.</li>
           <li><b>Kalender importieren</b> (unter Einstellungen): Termine aus einer .ics-Datei, z. B. deinem Stundenplan. Sie bekommen eine Stufe wie alle anderen Termine.</li>
           <li><b>Wiederkehrend</b> (↻): Beim Anlegen anhaken. Verschiebst du einen Termin einer Serie, gilt das nur für dieses eine Mal.</li>

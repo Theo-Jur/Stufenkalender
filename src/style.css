@@ -257,7 +257,7 @@ h1{font-family:var(--f-display);font-weight:700;font-size:30px;letter-spacing:-.
 .buffer{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:13px}
 .buffer select{border:1px solid var(--line-strong);background:var(--surface);border-radius:8px;padding:5px 8px}
 
-.main{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:18px;align-items:start}
+.main{display:grid;grid-template-columns:minmax(0,1fr) 220px;gap:16px;align-items:start}
 @media (max-width:980px){.main{grid-template-columns:minmax(0,1fr)}}
 
 .cal{background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow-x:auto;min-width:0}
@@ -446,3 +446,21 @@ body:not(.daily) .col{cursor:copy}
 /* Rückgängig im Hinweis unten */
 .toast{display:flex;align-items:center;gap:14px}
 .undobtn{border:0;background:transparent;color:var(--bg);font-weight:700;text-decoration:underline;text-underline-offset:3px;padding:2px 0;font-size:13.5px;white-space:nowrap}
+
+/* Hinweise nur bei Problemen */
+.logpanel{border-color:var(--danger)}
+.logpanel h2{display:flex;align-items:center;gap:8px}
+.logcount{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;padding:0 6px;border-radius:999px;background:var(--danger);color:#fff;font-size:12px;font-family:var(--f-body)}
+aside{position:sticky;top:12px}
+@media (max-width:980px){aside{position:static}}
+
+/* Kurze Termine: Titel und Uhrzeit in einer Zeile */
+.ev .one{display:flex;align-items:baseline;gap:6px;min-width:0}
+.ev .one .t{flex:1 1 auto;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+.ev .one .h{flex:none}
+
+/* Kategorie-Knöpfe ohne Zahl und „nur“ */
+.chip{user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.chip .ctog{padding:5px 12px 5px 10px}
+.ev.compact .t,.ev.compact .h{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+.ev.compact .one .h{display:inline}

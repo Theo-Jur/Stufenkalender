@@ -207,15 +207,13 @@ const LOCK_SVG='<svg class="lk" viewBox="0 0 12 12" aria-label="festgeschrieben"
 let prevPlan=null, flashIds=new Set();
 
 function renderFilters(){
-  const counts={}; state.events.forEach(e=>counts[e.cat]=(counts[e.cat]||0)+1);
-  $('filters').innerHTML=[1,2,3].map(t=>{
+    $('filters').innerHTML=[1,2,3].map(t=>{
     const cats=state.cats.filter(c=>c.tier===t);
     const on=cats.length===0||cats.some(c=>!state.hidden[c.id]);
     const chips=cats.length?cats.map(c=>{
       const vis=!state.hidden[c.id];
       return `<span class="chip k-${TC[c.tier]}" data-on="${vis}">
-        <button type="button" class="ctog" data-cattog="${c.id}" aria-pressed="${vis}" title="${vis?'Ausblenden':'Einblenden'}"><span class="dot"></span>${esc(c.name)}<span class="count">${counts[c.id]||0}</span></button>
-        <button type="button" class="solo" data-catsolo="${c.id}" aria-label="Nur ${esc(c.name)} ansehen">nur</button></span>`;}).join('')
+        <button type="button" class="ctog" data-cattog="${c.id}" aria-pressed="${vis}" title="Tippen: ${vis?'ausblenden':'einblenden'} · lange drücken: nur ${esc(c.name)}"><span class="dot"></span>${esc(c.name)}</button></span>`;}).join('')
       :'<span class="empty">Noch keine Kategorie in dieser Stufe.</span>';
     const sel=tierSel(), solo=!!sel&&sel.includes(t);
     const click=cats.length?` data-tiersolo="${t}" role="button" tabindex="0" aria-pressed="${solo}" title="${solo?'Diese Stufe abwählen':sel&&sel.length===1?'Diese Stufe dazunehmen':'Nur diese Stufe zeigen'}"`:'';
@@ -277,11 +275,13 @@ function renderGrid(plan){
       const {e,p,c}=it, w=100/it.cols;
       const pos=`top:${(p.start-START)*PX}px;height:${Math.max(e.dur*PX,22)}px;left:calc(${w*it.lane}% + 3px);width:calc(${w}% - 6px)`;
       const label=`${esc(e.title)}, ${wdl(p.day)} ${fmt(p.start)} bis ${fmt(p.start+e.dur)}, ${esc(c.name)}`;
-      const where=e.loc?placeName(e.loc):(daily?'':c.name);
+      const where=e.loc?placeName(e.loc):'', short=e.dur<45;
       const lock=p.locked&&p.locked!=='past'&&c.tier!==1?LOCK_SVG:'';
       const firstLine=e.note?e.note.split('\n')[0]:'';
-      const inner=`<span class="t">${esc(e.title)}${e.series?'<span class="rp" title="Wiederkehrend">↻</span>':''}</span><span class="h">${lock}${fmt(p.start)}–${fmt(p.start+e.dur)}${where?' · '+esc(where):''}</span>${firstLine&&e.dur>=45?`<span class="nt">${esc(firstLine)}</span>`:''}`;
-      const cls=`${p.moved?' prop':''}${p.locked==='past'?' past':''}`;
+      const inner=short
+        ?`<span class="one"><span class="t">${esc(e.title)}${e.series?'<span class="rp" title="Wiederkehrend">↻</span>':''}</span><span class="h">${lock}${fmt(p.start)}</span></span>`
+        :`<span class="t">${esc(e.title)}${e.series?'<span class="rp" title="Wiederkehrend">↻</span>':''}</span><span class="h">${lock}${fmt(p.start)}–${fmt(p.start+e.dur)}${where?' · '+esc(where):''}</span>${firstLine&&e.dur>=45?`<span class="nt">${esc(firstLine)}</span>`:''}`;
+      const cls=`${p.moved?' prop':''}${p.locked==='past'?' past':''}${e.dur<=75?' compact':''}`;
       const tr=TRAVEL[e.id]; let trv='';
       if(tr&&tr.min>0){
         const top=Math.max(0,tr.leave-START), h=(p.start-START-top)*PX;
@@ -365,7 +365,8 @@ function renderLog(plan){
     rows.push({o:p.day*1440+p.start,h:`<li class="k-${TC[c.tier]}"><span class="dot"></span><div><div class="what">${esc(e.title)}</div><div class="from bad">${wd(p.day)} ${fmt(p.start)}: Weg wird knapp</div><div class="why">Ab ${esc(placeName(tr.from))} brauchst du ${tr.est?'ca. ':''}${tr.min} min, ${have}.</div></div></li>`});
   });
   rows.sort((a,b)=>a.o-b.o); props.sort((a,b)=>a.o-b.o);
-  $('log').innerHTML=rows.length?rows.map(r=>r.h).join(''):'<p>Keine Probleme gefunden.</p>';
+  $('log').innerHTML=rows.map(r=>r.h).join('');
+  $('logpanel').hidden=!rows.length; $('logcount').textContent=rows.length;
   $('props').innerHTML=props.map(r=>r.h).join('');
   $('tray').hidden=!props.length;
   $('acceptall').hidden=props.filter(r=>r.h.includes('data-accept')).length<2;
@@ -440,6 +441,38 @@ function clickTier(t){
   setOnly(state.cats.filter(c=>next.includes(c.tier)).map(c=>c.id));
 }
 function isOnly(ids){return state.cats.every(c=>!!state.hidden[c.id]===!ids.includes(c.id));}
+// Kategorie-Knopf lange drücken (oder Rechtsklick) = nur diese Kategorie, nochmal = alle
+let longPressAt=0, lpT=null;
+function soloCat(id){isOnly([id])?(state.hidden={}):setOnly([id]); render();
+  const c=state.cats.find(x=>x.id===id); toast(isOnly([id])?`Nur noch ${c?c.name:'diese Kategorie'} zu sehen.`:'Wieder alles zu sehen.');}
+$('filters').addEventListener('pointerdown',ev=>{
+  const b=ev.target.closest('[data-cattog]'); clearTimeout(lpT); if(!b||ev.button>0) return;
+  lpT=setTimeout(()=>{longPressAt=Date.now(); if(navigator.vibrate) navigator.vibrate(15); soloCat(b.dataset.cattog);},500);
+});
+['pointerup','pointercancel','pointerleave'].forEach(t=>$('filters').addEventListener(t,()=>clearTimeout(lpT)));
+// Rechtsklick am Computer; auf manchen Handys feuert langes Drücken zusätzlich „contextmenu“ – dann nicht doppelt
+$('filters').addEventListener('contextmenu',ev=>{const b=ev.target.closest('[data-cattog]'); if(!b) return; ev.preventDefault(); clearTimeout(lpT);
+  if(Date.now()-longPressAt<800) return; longPressAt=Date.now(); soloCat(b.dataset.cattog);});
+
+/* Wischen im Kalender (Touch): Wochen blättern. Lässt sich die Woche seitlich scrollen,
+   wird erst am Rand umgeblättert. */
+(()=>{
+  const cal=document.querySelector('.cal'); if(!cal) return; let sw=null;
+  cal.addEventListener('touchstart',ev=>{
+    if(ev.touches.length!==1||ev.target.closest('.ev,.tchip')){sw=null; return;}
+    const t=ev.touches[0]; sw={x:t.clientX,y:t.clientY,t:Date.now(),sl:cal.scrollLeft};
+  },{passive:true});
+  cal.addEventListener('touchend',ev=>{
+    if(!sw||(drag&&drag.started)){sw=null; return;}
+    const t=ev.changedTouches[0], dx=t.clientX-sw.x, dy=t.clientY-sw.y, ms=Date.now()-sw.t; const s0=sw; sw=null;
+    if(Math.abs(dx)<60||Math.abs(dy)>Math.abs(dx)*0.6||ms>700) return;
+    const max=cal.scrollWidth-cal.clientWidth;
+    if(dx<0){ if(max>2&&s0.sl<max-2) return; goWeek(VIEW+1); }
+    else { if(max>2&&s0.sl>2) return; goWeek(VIEW-1); const m=cal.scrollWidth-cal.clientWidth; if(m>2) cal.scrollLeft=m; }
+    toast($('weeklabel').textContent);
+  },{passive:true});
+})();
+
 // Stufen-Kasten per Tastatur (Enter/Leertaste) wie ein Knopf
 $('filters').addEventListener('keydown',ev=>{
   const g=ev.target.closest&&ev.target.closest('.tgroup[data-tiersolo]');
@@ -448,6 +481,7 @@ $('filters').addEventListener('keydown',ev=>{
 });
 document.addEventListener('click',ev=>{
   let b;
+  if(ev.target.closest('[data-cattog]')&&Date.now()-longPressAt<700) return; // Klick nach langem Drücken ignorieren
   if(b=ev.target.closest('[data-cattog]')){const id=b.dataset.cattog; if(state.hidden[id]) delete state.hidden[id]; else state.hidden[id]=true; render(); return;}
   if(b=ev.target.closest('[data-catsolo]')){const ids=[b.dataset.catsolo]; isOnly(ids)?(state.hidden={}):setOnly(ids); render(); return;}
   if(b=ev.target.closest('[data-tiersolo]')){clickTier(+b.dataset.tiersolo); render(); return;}
