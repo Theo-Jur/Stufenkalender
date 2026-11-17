@@ -190,8 +190,8 @@ function renderFilters(){
         <button type="button" class="ctog" data-cattog="${c.id}" aria-pressed="${vis}" title="${vis?'Ausblenden':'Einblenden'}"><span class="dot"></span>${esc(c.name)}<span class="count">${counts[c.id]||0}</span></button>
         <button type="button" class="solo" data-catsolo="${c.id}" aria-label="Nur ${esc(c.name)} ansehen">nur</button></span>`;}).join('')
       :'<span class="empty">Noch keine Kategorie in dieser Stufe.</span>';
-    const ids=cats.map(c=>c.id), solo=cats.length>0&&isOnly(ids);
-    const click=cats.length?` data-tiersolo="${t}" role="button" tabindex="0" aria-pressed="${solo}" title="${solo?'Wieder alle Stufen zeigen':'Nur diese Stufe zeigen'}"`:'';
+    const sel=tierSel(), solo=!!sel&&sel.includes(t);
+    const click=cats.length?` data-tiersolo="${t}" role="button" tabindex="0" aria-pressed="${solo}" title="${solo?'Diese Stufe abwählen':sel&&sel.length===1?'Diese Stufe dazunehmen':'Nur diese Stufe zeigen'}"`:'';
     return `<div class="tgroup k-${TC[t]}${cats.length?' clickable':''}" data-on="${on}"${click}>
       <div class="thead"><span class="ttog"><span><span class="nm">Stufe ${t} · ${TIERS[t].name}</span><span class="rule">${TIERS[t].rule}</span></span></span></div>
       <div class="chips">${chips}</div></div>`;
@@ -205,6 +205,7 @@ function renderFilters(){
     const tiers=[...new Set(vis.map(c=>c.tier))];
     const full=t=>state.cats.filter(c=>c.tier===t).every(c=>!state.hidden[c.id]);
     if(tiers.length===1 && full(tiers[0])) txt=`Nur <b>Stufe ${tiers[0]} · ${TIERS[tiers[0]].name}</b>`;
+    else if(tierSel()) txt='Nur '+tierSel().map(t=>`<b>Stufe ${t} · ${TIERS[t].name}</b>`).join(' und ');
     else txt='Nur '+vis.map(c=>`<b>${esc(c.name)}</b>`).join(', ');
   }
   $('view').innerHTML='Ansicht: '+txt;
@@ -394,6 +395,23 @@ function render(){
 
 /* ---------- Filter-Interaktion ---------- */
 function setOnly(ids){state.cats.forEach(c=>{if(ids.includes(c.id)) delete state.hidden[c.id]; else state.hidden[c.id]=true;});}
+// Gewählte Stufen-Kästen: null = keine Auswahl (alles zu sehen oder gemischt per Kategorie-Knopf),
+// sonst die Stufen, deren Kategorien alle sichtbar sind, während alle anderen ganz ausgeblendet sind.
+function tierSel(){
+  const tiers=[1,2,3].filter(t=>state.cats.some(c=>c.tier===t)), on=[];
+  for(const t of tiers){const cs=state.cats.filter(c=>c.tier===t), n=cs.filter(c=>!state.hidden[c.id]).length;
+    if(n===cs.length) on.push(t); else if(n) return null;}
+  return on.length&&on.length<tiers.length?on:null;
+}
+function clickTier(t){
+  const sel=tierSel(); let next;
+  if(!sel) next=[t];                                   // erster Klick: nur diese Stufe
+  else if(sel.includes(t)) next=sel.filter(x=>x!==t);  // gewählte Stufe nochmal: abwählen
+  else if(sel.length===1) next=[...sel,t];             // zweite Stufe dazu
+  else next=[t];                                       // dritte Stufe: nur noch diese
+  if(!next.length){state.hidden={};return;}
+  setOnly(state.cats.filter(c=>next.includes(c.tier)).map(c=>c.id));
+}
 function isOnly(ids){return state.cats.every(c=>!!state.hidden[c.id]===!ids.includes(c.id));}
 // Stufen-Kasten per Tastatur (Enter/Leertaste) wie ein Knopf
 $('filters').addEventListener('keydown',ev=>{
@@ -405,7 +423,7 @@ document.addEventListener('click',ev=>{
   let b;
   if(b=ev.target.closest('[data-cattog]')){const id=b.dataset.cattog; if(state.hidden[id]) delete state.hidden[id]; else state.hidden[id]=true; render(); return;}
   if(b=ev.target.closest('[data-catsolo]')){const ids=[b.dataset.catsolo]; isOnly(ids)?(state.hidden={}):setOnly(ids); render(); return;}
-  if(b=ev.target.closest('[data-tiersolo]')){const ids=state.cats.filter(c=>c.tier===+b.dataset.tiersolo).map(c=>c.id); isOnly(ids)?(state.hidden={}):setOnly(ids); render(); return;}
+  if(b=ev.target.closest('[data-tiersolo]')){clickTier(+b.dataset.tiersolo); render(); return;}
   if(b=ev.target.closest('[data-mode]')){setMode(b.dataset.mode); return;}
   if(b=ev.target.closest('[data-seg]')){const t=+b.dataset.seg; if(t===0) state.hidden={}; else setOnly(state.cats.filter(c=>c.tier===t).map(c=>c.id)); render(); return;}
   if(b=ev.target.closest('[data-mini]')){const id=b.dataset.mini, c=state.cats.find(x=>x.id===id);
