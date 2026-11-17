@@ -46,6 +46,33 @@ let state=normalize(initial);
 const placeName=id=>(state.places.find(p=>p.id===id)||{name:'?'}).name;
 function travel(a,b){if(!a||!b||a===b) return {min:0,est:false}; const v=state.travel[pkey(a,b)]; return v==null?{min:DEFAULT_TRAVEL,est:true}:{min:v,est:false};}
 function save(){ if(onChange) onChange(clone(state)); }
+/* ---------- Rückgängig ----------
+   Nach jeder echten Änderung (Filter zählen nicht) wird der vorherige Stand gemerkt
+   und unten kurz „Rückgängig“ angeboten. */
+let snap=null, undoPrev=null, undoFresh=false, undoMsgShown=false;
+const dataSnap=()=>JSON.stringify(Object.assign({},state,{hidden:undefined}));
+function trackUndo(){
+  const cur=dataSnap();
+  if(snap===null){snap=cur; return;}
+  if(cur===snap) return;
+  const prev=JSON.parse(snap); undoPrev=snap; snap=cur;
+  if(undoFresh) return;
+  undoFresh=true; undoMsgShown=false;
+  setTimeout(()=>{ if(!undoMsgShown) toast(undoText(prev)); undoFresh=false; },0);
+}
+function undoText(prev){
+  const a=prev.events.length, b=state.events.length;
+  if(b<a) return a-b>1?`${a-b} Termine gelöscht.`:'Termin gelöscht.';
+  if(b>a) return b-a>1?`${b-a} Termine angelegt.`:'Termin angelegt.';
+  if(JSON.stringify(prev.events)!==JSON.stringify(state.events)) return 'Termin geändert.';
+  return 'Einstellung geändert.';
+}
+function doUndo(){
+  if(!undoPrev) return;
+  const hidden=state.hidden; state=normalize(JSON.parse(undoPrev)); state.hidden=hidden;
+  undoPrev=null; snap=dataSnap(); prevPlan=null; render();
+  toast('Rückgängig gemacht.');
+}
 function clone(x){return JSON.parse(JSON.stringify(x));}
 const fmt=m=>String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -390,7 +417,7 @@ function render(){
   flashIds=new Set();
   if(prevPlan) Object.keys(plan).forEach(id=>{const a=plan[id],b=prevPlan[id]; if(b&&!a.unplaced&&!b.unplaced&&(a.day!==b.day||a.start!==b.start)) flashIds.add(id);});
   prevPlan=plan;
-  renderFilters(); renderGrid(plan); renderLog(plan); renderNext(plan); renderSeg(); save();
+  renderFilters(); renderGrid(plan); renderLog(plan); renderNext(plan); renderSeg(); save(); trackUndo();
 }
 
 /* ---------- Filter-Interaktion ---------- */
@@ -433,11 +460,20 @@ document.addEventListener('click',ev=>{
   if(justDragged) return;
   if(b=ev.target.closest('[data-view]')){openDetail(b.dataset.view); return;}
   if(mode==='plan'&&(b=ev.target.closest('.ev'))){openForm(b.dataset.id);}
+  if(mode==='plan'&&(b=ev.target.closest('.col[data-day]'))&&!ev.target.closest('.ev,.slotprop,.travel')){
+    const r=b.getBoundingClientRect(), min=START+(ev.clientY-r.top)/PX;
+    const start=Math.max(0,Math.min(END-STEP,Math.floor(min/STEP)*STEP));
+    openForm(null,{day:+b.dataset.day,start});
+  }
 });
 $('showall').onclick=()=>{state.hidden={}; render();};
 $('buf').addEventListener('change',()=>{state.buffer=+$('buf').value; render();});
 $('lockm').addEventListener('change',()=>{state.lockMode=$('lockm').value; render();});
 $('add').onclick=()=>openForm(null);
+$('setbtn').onclick=()=>{$('ov-settings').hidden=false; setTimeout(()=>$('set-close').focus(),0);};
+$('set-close').onclick=()=>{$('ov-settings').hidden=true; $('setbtn').focus();};
+// Ein Unterpunkt öffnet sein eigenes Fenster und schließt die Einstellungen
+['mgr','sleepbtn','placebtn','impbtn'].forEach(id=>$(id).addEventListener('click',()=>{$('ov-settings').hidden=true;},true));
 
 
 /* ---------- Termin-Formular ---------- */
@@ -478,15 +514,15 @@ function syncLoc(){
   $('f-locinfo').textContent=v===state.home?'Keine Wegzeit, wenn du schon zuhause bist.':`Ab Zuhause ${t.est?'ca. ':''}${t.min} min. Kommst du von einem anderen Termin, gilt dessen Ort.`;
 }
 $('f-loc').addEventListener('change',()=>{syncLoc(); if($('f-loc').value==='__new') setTimeout(()=>$('f-newname').focus(),0);});
-function openForm(iid){
+function openForm(iid,preset){
   if(!state.cats.length){openMgr(); return;}
   const inst=iid?EV.find(i=>i.id===iid):null; const e=inst?state.events.find(x=>x.id===inst.sid):null;
   editing=e?e.id:null; editingInst=inst;
   $('f-head').textContent=e?(e.rec?'Serie bearbeiten':'Termin bearbeiten'):'Neuer Termin';
   $('f-title').value=e?e.title:'';
   fillCatSelect(e?e.cat:(state.cats.find(c=>c.tier===3)||state.cats[0]).id);
-  const defDay=VIEW===CURWEEK?TODAY:VIEW*7;
-  $('f-day').value=isoDate(e?e.day:defDay); $('f-time').value=fmt(e?e.start:1080);
+  const defDay=preset?preset.day:VIEW===CURWEEK?TODAY:VIEW*7;
+  $('f-day').value=isoDate(e?e.day:defDay); $('f-time').value=fmt(e?e.start:preset?preset.start:1080);
   $('f-rec').checked=!!(e&&e.rec); $('f-freq').value=e&&e.rec?e.rec.freq:'weekly';
   $('f-until').value=e&&e.rec&&e.rec.until!=null?isoDate(e.rec.until):'';
   recDays=e&&e.rec&&e.rec.days?e.rec.days.slice():[wdi(e?e.day:defDay)]; syncRec();
@@ -828,7 +864,13 @@ $('iform').addEventListener('submit',ev=>{
 
 /* ---------- Drag & Drop ---------- */
 let drag=null, justDragged=false, toastT=null;
-function toast(msg){const t=$('toast'); t.textContent=msg; t.hidden=false; clearTimeout(toastT); toastT=setTimeout(()=>t.hidden=true,3200);}
+function toast(msg){
+  const t=$('toast'), withUndo=undoFresh&&!!undoPrev;
+  if(undoFresh) undoMsgShown=true;
+  t.textContent=msg;
+  if(withUndo){const b=document.createElement('button'); b.type='button'; b.className='undobtn'; b.textContent='Rückgängig'; b.onclick=()=>{t.hidden=true; doUndo();}; t.appendChild(b);}
+  t.hidden=false; clearTimeout(toastT); toastT=setTimeout(()=>t.hidden=true,withUndo?7000:3200);
+}
 function othersPlaced(id){return EV.filter(x=>x.id!==id&&PLAN[x.id]&&!PLAN[x.id].unplaced).map(x=>({id:x.id,day:PLAN[x.id].day,start:PLAN[x.id].start,dur:x.dur,loc:x.loc}));}
 function canPlace(e,d,t,placed){
   if(d*1440+t<Math.ceil((nowAbs()+1)/STEP)*STEP) return false;
@@ -913,6 +955,9 @@ document.addEventListener('pointerup',ev=>{
 });
 document.addEventListener('pointercancel',()=>{ if(drag&&drag.started) cleanupDrag(); drag=null; });
 document.addEventListener('keydown',ev=>{ if(ev.key==='Escape'&&drag&&drag.started){ cleanupDrag(); drag=null; } });
+document.addEventListener('keydown',ev=>{
+  if((ev.ctrlKey||ev.metaKey)&&!ev.shiftKey&&ev.key.toLowerCase()==='z'&&undoPrev&&mode==='plan'&&!ev.target.closest('input,textarea,select')&&!document.querySelector('.overlay:not([hidden])')){ev.preventDefault(); doUndo();}
+});
 
 /* ---------- Modus ---------- */
 function setMode(m){
@@ -972,14 +1017,14 @@ $('pform').addEventListener('submit',ev=>{
 });
 
 /* Dialoge schließen */
-['ov-ev','ov-cat','ov-sleep','ov-place','ov-prop','ov-detail','ov-import','ov-help'].forEach(id=>$(id).addEventListener('click',ev=>{if(ev.target.id===id) $(id).hidden=true;}));
-document.addEventListener('keydown',ev=>{if(ev.key==='Escape'){['ov-ev','ov-cat','ov-sleep','ov-place','ov-prop','ov-detail','ov-import','ov-help'].forEach(id=>$(id).hidden=true);}});
+['ov-ev','ov-cat','ov-sleep','ov-place','ov-prop','ov-detail','ov-import','ov-help','ov-settings'].forEach(id=>$(id).addEventListener('click',ev=>{if(ev.target.id===id) $(id).hidden=true;}));
+document.addEventListener('keydown',ev=>{if(ev.key==='Escape'){['ov-ev','ov-cat','ov-sleep','ov-place','ov-prop','ov-detail','ov-import','ov-help','ov-settings'].forEach(id=>$(id).hidden=true);}});
 
 let savedMode='plan'; try{savedMode=localStorage.getItem(KEY+'-mode')||'plan';}catch(e){}
 setMode(savedMode);
 
 return {
   // Neue Daten von einem anderen Gerät übernehmen
-  replaceState(s){ state=normalize(s); prevPlan=null; render(); }
+  replaceState(s){ state=normalize(s); snap=dataSnap(); undoPrev=null; prevPlan=null; render(); }
 };
 }

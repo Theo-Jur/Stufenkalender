@@ -68,7 +68,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   // Neu laden: Sitzung bleibt
   await A.p.reload(); await A.p.waitForSelector('#app:not([hidden])', { timeout: 5000 }); console.log('reload keeps session, events:', await A.p.$$eval('.ev .t', (els) => els.length));
   // Import
-  await A.p.click('#impbtn'); await A.p.setInputFiles('#i-file', ICS); await A.p.waitForSelector('#i-opts:not([hidden])');
+  await A.p.click('#setbtn'); await A.p.click('#impbtn'); await A.p.setInputFiles('#i-file', ICS); await A.p.waitForSelector('#i-opts:not([hidden])');
   console.log('import summary:', (await A.p.textContent('#i-sum')).replace(/\s+/g, ' '));
   await A.p.click('#i-ok'); await sleep(1500); console.log('server events after import:', db[USER.id].data.events.length);
   await A.p.screenshot({ path: OUT + '/2-app-desktop.png' });
