@@ -190,7 +190,7 @@ function renderFilters(){
         <button type="button" class="ctog" data-cattog="${c.id}" aria-pressed="${vis}" title="${vis?'Ausblenden':'Einblenden'}"><span class="dot"></span>${esc(c.name)}<span class="count">${counts[c.id]||0}</span></button>
         <button type="button" class="solo" data-catsolo="${c.id}" aria-label="Nur ${esc(c.name)} ansehen">nur</button></span>`;}).join('')
       :'<span class="empty">Noch keine Kategorie in dieser Stufe.</span>';
-    return `<div class="tgroup" data-on="${on}">
+    return `<div class="tgroup k-${TC[t]}" data-on="${on}">
       <div class="thead">
         <button type="button" class="ttog" data-tiertog="${t}" aria-pressed="${on}" ${cats.length?'':'disabled'}>
           <span class="bstyle s${t}"></span><span><span class="nm">Stufe ${t} · ${TIERS[t].name}</span><span class="rule">${TIERS[t].rule}</span></span></button>
