@@ -6,7 +6,7 @@
 - Ablauf einer Änderung: Code ändern → testen → auf `main` pushen → Vercel veröffentlicht automatisch (1–2 min) → Theo lädt mit Strg+F5 neu bzw. startet die installierte App neu.
 
 ## Grundidee (nicht ohne Rückfrage ändern)
-- Termine gehören zu **Kategorien**, jede Kategorie hat eine **Stufe**: 1 Fix (rot), 2 Wichtig (gelb), 3 Flexibel (grün). Farbe = nur Stufe. Rand: durchgezogen/gestrichelt/gepunktet (für Farbschwäche).
+- Termine gehören zu **Kategorien**, jede Kategorie hat eine **Stufe**: 1 Fix (rot), 2 Wichtig (gelb), 3 Flexibel (grün). Farbe = nur Stufe, satt/deckend gefüllt (auch die drei Stufen-Kästen). Unterschiedliche Randlinien je Stufe hat Theo bewusst entfernt (17.11.2026).
 - Der Planer verschiebt **nie selbst**. Verdrängte Termine landen in der Ablage „Neu einplanen“; Theo zieht sie per Drag & Drop in den Kalender (grüne Bereiche passen) oder übernimmt den Vorschlag.
 - Festschreiben (ab Vorabend 20 Uhr, einstellbar oder pro Termin), nichts in die Vergangenheit, Schlafzeiten sind tabu für Stufe 2/3, Wegzeiten zwischen Orten (vom Ort des vorherigen Termins, sonst Zuhause).
 - Zwei Modi: **Planen** (alles bearbeitbar) und **Alltag** (nur ansehen, kleine Stufen-Filter, „Jetzt/Als Nächstes“, Termin antippen zeigt Details).

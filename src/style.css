@@ -60,7 +60,6 @@ img{max-width:100%}
 .trayhead p{margin:2px 0 0;font-size:12.5px;color:var(--muted)}
 .traylist{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px}
 .tchip{flex:0 0 auto;width:220px;max-width:80vw;display:flex;flex-direction:column;gap:3px;background:var(--tbg);border:2px solid var(--tc);border-radius:10px;padding:8px 10px;cursor:grab;touch-action:none;user-select:none}
-.tchip.s2{border-style:dashed}.tchip.s3{border-style:dotted}
 .tchip .t{font-weight:600;font-size:13.5px}
 .tchip .h{font-family:var(--f-mono);font-size:11px;color:var(--muted)}
 .tchip .why{font-size:11.5px;color:var(--muted)}
@@ -240,7 +239,6 @@ h1{font-family:var(--f-display);font-weight:700;font-size:30px;letter-spacing:-.
 .tgroup[data-on="false"] .ttog{opacity:.5}
 .bstyle{width:22px;height:14px;border-radius:4px;border:2px solid var(--muted);flex:none}
 .bstyle.s1{border-color:var(--red);background:var(--red-bg)}.bstyle.s2{border-color:var(--yellow);background:var(--yellow-bg)}.bstyle.s3{border-color:var(--green);background:var(--green-bg)}
-.bstyle.s2{border-style:dashed}.bstyle.s3{border-style:dotted}
 .linkbtn{border:0;background:transparent;color:var(--accent);font-size:12.5px;padding:2px 0;white-space:nowrap}
 .linkbtn:hover{text-decoration:underline}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
@@ -280,7 +278,6 @@ h1{font-family:var(--f-display);font-weight:700;font-size:30px;letter-spacing:-.
 .ev{position:absolute;border-radius:7px;padding:4px 6px;overflow:hidden;font-size:12px;line-height:1.25;
   background:var(--tbg);border:2px solid var(--tc);text-align:left;color:var(--fg);z-index:2;
   transition:top .45s cubic-bezier(.3,.7,.2,1), box-shadow .2s}
-.ev.s2{border-style:dashed}.ev.s3{border-style:dotted}
 .ev:hover{box-shadow:0 2px 10px rgba(0,0,0,.12);z-index:3}
 .ev .t{font-weight:600;display:block;overflow-wrap:anywhere}
 .ev .h{font-family:var(--f-mono);font-size:10.5px;color:var(--muted);font-variant-numeric:tabular-nums}
@@ -380,8 +377,7 @@ button.avatar[aria-expanded="true"]{box-shadow:0 0 0 3px var(--surface),0 0 0 5p
 .switch:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 
 /* ---------- Satte Stufenfarben (deckend, in hell und dunkel gleich) ----------
-   --tfill = Füllung, --tink = Schrift darauf, --tedge = Rand (dunkler, damit
-   durchgezogen/gestrichelt/gepunktet auf der Füllung sichtbar bleibt) */
+   --tfill = Füllung, --tink = Schrift darauf, --tedge = Rand (etwas dunkler) */
 :root{
   --red-fill:#c9302a; --red-ink:#ffffff; --red-edge:#7a1510;
   --yellow-fill:#f2c200; --yellow-ink:#241c00; --yellow-edge:#7d6000;
@@ -407,7 +403,6 @@ button.avatar[aria-expanded="true"]{box-shadow:0 0 0 3px var(--surface),0 0 0 5p
 .tgroup .ttog .rule{color:inherit;opacity:.85}
 .tgroup .linkbtn{color:inherit;text-decoration:underline;text-underline-offset:2px}
 .tgroup .empty{color:inherit;opacity:.85;font-size:12.5px}
-.tgroup .bstyle{background:transparent;border-color:var(--tink)}
 .tgroup .chip{background:transparent;border:1.5px solid var(--tink)}
 .tgroup .chip .ctog,.tgroup .chip .count,.tgroup .chip .solo{color:var(--tink)}
 .tgroup .chip .solo{border-left-color:var(--tink)}
@@ -419,4 +414,3 @@ button.avatar[aria-expanded="true"]{box-shadow:0 0 0 3px var(--surface),0 0 0 5p
 .tgroup[data-on="false"]{opacity:.5}
 .tgroup[data-on="false"] .ttog{opacity:1}
 .bstyle.s1{background:var(--red-fill);border-color:var(--red-edge)}.bstyle.s2{background:var(--yellow-fill);border-color:var(--yellow-edge)}.bstyle.s3{background:var(--green-fill);border-color:var(--green-edge)}
-.tgroup .bstyle.s1,.tgroup .bstyle.s2,.tgroup .bstyle.s3{background:transparent;border-color:var(--tink)}

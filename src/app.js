@@ -193,7 +193,7 @@ function renderFilters(){
     return `<div class="tgroup k-${TC[t]}" data-on="${on}">
       <div class="thead">
         <button type="button" class="ttog" data-tiertog="${t}" aria-pressed="${on}" ${cats.length?'':'disabled'}>
-          <span class="bstyle s${t}"></span><span><span class="nm">Stufe ${t} · ${TIERS[t].name}</span><span class="rule">${TIERS[t].rule}</span></span></button>
+          <span><span class="nm">Stufe ${t} · ${TIERS[t].name}</span><span class="rule">${TIERS[t].rule}</span></span></button>
         ${cats.length?`<button type="button" class="linkbtn" data-tiersolo="${t}">nur diese Stufe</button>`:''}
       </div>
       <div class="chips">${chips}</div></div>`;
