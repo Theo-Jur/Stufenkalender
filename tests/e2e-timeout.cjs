@@ -1,0 +1,10 @@
+const { chromium } = require('playwright'); const http=require('http'),fs=require('fs'),path=require('path');
+const DIST=process.argv[2];
+const srv=http.createServer((q,r)=>{let p=path.join(DIST,q.url.split('?')[0]); if(!fs.existsSync(p)||fs.statSync(p).isDirectory()) p=path.join(DIST,'index.html'); const t={'.html':'text/html','.js':'text/javascript','.css':'text/css'}[path.extname(p)]||'application/octet-stream'; r.writeHead(200,{'content-type':t}); fs.createReadStream(p).pipe(r);}).listen(4174);
+(async()=>{const b=await chromium.launch(); const c=await b.newContext({serviceWorkers:'block'});
+await c.route('**/*',async route=>{const u=new URL(route.request().url()); if(u.hostname!=='mock.supabase.co') return route.continue();
+ if(u.pathname==='/auth/v1/token') return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({access_token:'t',token_type:'bearer',expires_in:3600,expires_at:Math.floor(Date.now()/1000)+3600,refresh_token:'r',user:{id:'u1',aud:'authenticated',role:'authenticated',email:'a@b.de'}})});
+ /* REST hängt */ });
+const p=await c.newPage(); await p.goto('http://localhost:4174/'); await p.fill('#a-mail','a@b.de'); await p.fill('#a-pw','richtiges-pw'); await p.click('#a-submit');
+await p.waitForSelector('#loadhelp:not([hidden])',{timeout:15000}); console.log('help:',(await p.textContent('#loaderr')));
+await b.close(); srv.close();})().catch(e=>{console.log('FAIL',e.message);process.exit(1)});
