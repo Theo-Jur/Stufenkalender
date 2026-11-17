@@ -414,3 +414,7 @@ button.avatar[aria-expanded="true"]{box-shadow:0 0 0 3px var(--surface),0 0 0 5p
 .tgroup[data-on="false"]{opacity:.5}
 .tgroup[data-on="false"] .ttog{opacity:1}
 .bstyle.s1{background:var(--red-fill);border-color:var(--red-edge)}.bstyle.s2{background:var(--yellow-fill);border-color:var(--yellow-edge)}.bstyle.s3{background:var(--green-fill);border-color:var(--green-edge)}
+.tgroup.clickable{cursor:pointer;transition:filter .12s,box-shadow .12s}
+.tgroup.clickable:hover{filter:brightness(1.06)}
+.tgroup[aria-pressed="true"]{box-shadow:0 0 0 3px var(--bg),0 0 0 5px var(--tedge)}
+.tgroup:focus-visible{outline:3px solid var(--accent);outline-offset:2px}

@@ -190,12 +190,10 @@ function renderFilters(){
         <button type="button" class="ctog" data-cattog="${c.id}" aria-pressed="${vis}" title="${vis?'Ausblenden':'Einblenden'}"><span class="dot"></span>${esc(c.name)}<span class="count">${counts[c.id]||0}</span></button>
         <button type="button" class="solo" data-catsolo="${c.id}" aria-label="Nur ${esc(c.name)} ansehen">nur</button></span>`;}).join('')
       :'<span class="empty">Noch keine Kategorie in dieser Stufe.</span>';
-    return `<div class="tgroup k-${TC[t]}" data-on="${on}">
-      <div class="thead">
-        <button type="button" class="ttog" data-tiertog="${t}" aria-pressed="${on}" ${cats.length?'':'disabled'}>
-          <span><span class="nm">Stufe ${t} · ${TIERS[t].name}</span><span class="rule">${TIERS[t].rule}</span></span></button>
-        ${cats.length?`<button type="button" class="linkbtn" data-tiersolo="${t}">nur diese Stufe</button>`:''}
-      </div>
+    const ids=cats.map(c=>c.id), solo=cats.length>0&&isOnly(ids);
+    const click=cats.length?` data-tiersolo="${t}" role="button" tabindex="0" aria-pressed="${solo}" title="${solo?'Wieder alle Stufen zeigen':'Nur diese Stufe zeigen'}"`:'';
+    return `<div class="tgroup k-${TC[t]}${cats.length?' clickable':''}" data-on="${on}"${click}>
+      <div class="thead"><span class="ttog"><span><span class="nm">Stufe ${t} · ${TIERS[t].name}</span><span class="rule">${TIERS[t].rule}</span></span></span></div>
       <div class="chips">${chips}</div></div>`;
   }).join('');
   // Ansicht beschreiben
@@ -397,11 +395,16 @@ function render(){
 /* ---------- Filter-Interaktion ---------- */
 function setOnly(ids){state.cats.forEach(c=>{if(ids.includes(c.id)) delete state.hidden[c.id]; else state.hidden[c.id]=true;});}
 function isOnly(ids){return state.cats.every(c=>!!state.hidden[c.id]===!ids.includes(c.id));}
+// Stufen-Kasten per Tastatur (Enter/Leertaste) wie ein Knopf
+$('filters').addEventListener('keydown',ev=>{
+  const g=ev.target.closest&&ev.target.closest('.tgroup[data-tiersolo]');
+  if(!g||ev.target!==g||(ev.key!=='Enter'&&ev.key!==' ')) return;
+  ev.preventDefault(); g.click(); setTimeout(()=>{const n=document.querySelector(`.tgroup[data-tiersolo="${g.dataset.tiersolo}"]`); if(n) n.focus();},0);
+});
 document.addEventListener('click',ev=>{
   let b;
   if(b=ev.target.closest('[data-cattog]')){const id=b.dataset.cattog; if(state.hidden[id]) delete state.hidden[id]; else state.hidden[id]=true; render(); return;}
   if(b=ev.target.closest('[data-catsolo]')){const ids=[b.dataset.catsolo]; isOnly(ids)?(state.hidden={}):setOnly(ids); render(); return;}
-  if(b=ev.target.closest('[data-tiertog]')){const t=+b.dataset.tiertog; const cats=state.cats.filter(c=>c.tier===t); const anyOn=cats.some(c=>!state.hidden[c.id]); cats.forEach(c=>{if(anyOn) state.hidden[c.id]=true; else delete state.hidden[c.id];}); render(); return;}
   if(b=ev.target.closest('[data-tiersolo]')){const ids=state.cats.filter(c=>c.tier===+b.dataset.tiersolo).map(c=>c.id); isOnly(ids)?(state.hidden={}):setOnly(ids); render(); return;}
   if(b=ev.target.closest('[data-mode]')){setMode(b.dataset.mode); return;}
   if(b=ev.target.closest('[data-seg]')){const t=+b.dataset.seg; if(t===0) state.hidden={}; else setOnly(state.cats.filter(c=>c.tier===t).map(c=>c.id)); render(); return;}
