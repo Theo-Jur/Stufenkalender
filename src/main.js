@@ -115,6 +115,19 @@ $('acctbtn').addEventListener('click', (ev) => { ev.stopPropagation(); setAcctMe
 document.addEventListener('click', (ev) => { if (!$('acctmenu').hidden && !ev.target.closest('.acctwrap')) setAcctMenu(false); });
 document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape' && !$('acctmenu').hidden) { setAcctMenu(false); $('acctbtn').focus(); } });
 
+/* ---------- Hell / Dunkel (gilt nur für dieses Gerät) ---------- */
+
+const darkQuery = window.matchMedia('(prefers-color-scheme: dark)');
+const isDark = () => document.documentElement.dataset.theme ? document.documentElement.dataset.theme === 'dark' : darkQuery.matches;
+const syncThemeSwitch = () => { $('themesw').checked = isDark(); };
+$('themesw').addEventListener('change', () => {
+  const t = $('themesw').checked ? 'dark' : 'light';
+  document.documentElement.dataset.theme = t;
+  try { localStorage.setItem('stufenkalender-theme', t); } catch { /* egal */ }
+});
+darkQuery.addEventListener('change', syncThemeSwitch);
+syncThemeSwitch();
+
 /* ---------- Anmeldung ---------- */
 
 const MESSAGES = [

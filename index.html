@@ -7,6 +7,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Stufenkalender">
   <title>Stufenkalender</title>
+  <script>try{var t=localStorage.getItem('stufenkalender-theme');if(t==='light'||t==='dark')document.documentElement.dataset.theme=t;}catch(e){}</script>
   <link rel="icon" href="/favicon.png" type="image/png">
   <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -79,6 +80,8 @@
             <button type="button" class="avatar" id="acctbtn" aria-haspopup="true" aria-expanded="false" aria-controls="acctmenu" aria-label="Konto" title="Konto"></button>
             <div class="acctmenu" id="acctmenu" hidden>
               <div class="amhead"><span class="avatar big" id="acctbig" aria-hidden="true"></span><div><div class="amlabel">Angemeldet als</div><div class="ammail" id="acctmail"></div></div></div>
+              <label class="themerow" for="themesw"><span>Dunkles Design</span>
+                <input type="checkbox" role="switch" class="switch" id="themesw"></label>
               <button type="button" class="btn small" id="logout">Abmelden</button>
             </div>
           </div>
