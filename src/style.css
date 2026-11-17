@@ -374,16 +374,19 @@ button.avatar[aria-expanded="true"]{box-shadow:0 0 0 3px var(--surface),0 0 0 5p
 .switch:checked::after{transform:translateX(18px)}
 .switch:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 
-/* ---------- Satte Stufenfarben (deckend, in hell und dunkel gleich) ----------
-   --tfill = Füllung, --tink = Schrift darauf, --tedge = Rand (etwas dunkler) */
+/* ---------- Stufenfarben: ein Farbton (Indigo) in drei Stärken ----------
+   Je fester die Stufe, desto dunkler. --tfill = Füllung, --tink = Schrift darauf,
+   --tedge = Rand, --tbg = zarte Tönung (Hintergründe, Schraffuren). In hell und dunkel gleich. */
 :root{
-  --red-fill:#c9302a; --red-ink:#ffffff; --red-edge:#7a1510;
-  --yellow-fill:#f2c200; --yellow-ink:#241c00; --yellow-edge:#7d6000;
-  --green-fill:#237a36; --green-ink:#ffffff; --green-edge:#0e4519;
+  --t1-fill:#3b3fa8; --t1-ink:#ffffff; --t1-edge:#262a7a; --t1-tint:#e3e4fa;
+  --t2-fill:#7b7fe0; --t2-ink:#ffffff; --t2-edge:#4f53b8; --t2-tint:#ebecfc;
+  --t3-fill:#cdcff8; --t3-ink:#23266b; --t3-edge:#8f93e0; --t3-tint:#f2f2fd;
 }
-.k-red{--tfill:var(--red-fill);--tink:var(--red-ink);--tedge:var(--red-edge)}
-.k-yellow{--tfill:var(--yellow-fill);--tink:var(--yellow-ink);--tedge:var(--yellow-edge)}
-.k-green{--tfill:var(--green-fill);--tink:var(--green-ink);--tedge:var(--green-edge)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--t1-tint:#24264d;--t2-tint:#2b2d5c;--t3-tint:#30325f;}}
+:root[data-theme="dark"]{--t1-tint:#24264d;--t2-tint:#2b2d5c;--t3-tint:#30325f;}
+.k-t1{--tfill:var(--t1-fill);--tink:var(--t1-ink);--tedge:var(--t1-edge);--tc:var(--t1-fill);--tbg:var(--t1-tint)}
+.k-t2{--tfill:var(--t2-fill);--tink:var(--t2-ink);--tedge:var(--t2-edge);--tc:var(--t2-fill);--tbg:var(--t2-tint)}
+.k-t3{--tfill:var(--t3-fill);--tink:var(--t3-ink);--tedge:var(--t3-edge);--tc:var(--t3-edge);--tbg:var(--t3-tint)}
 .dot{background:var(--tfill,var(--tc))}
 
 /* Termine im Kalender, in der Ablage und beim Ziehen */
@@ -411,7 +414,7 @@ button.avatar[aria-expanded="true"]{box-shadow:0 0 0 3px var(--surface),0 0 0 5p
 .tgroup .chip[data-on="false"] .dot{background:transparent;border:1.5px solid var(--tedge);box-shadow:none}
 .tgroup[data-on="false"]{opacity:.5}
 .tgroup[data-on="false"] .ttog{opacity:1}
-.bstyle.s1{background:var(--red-fill);border-color:var(--red-edge)}.bstyle.s2{background:var(--yellow-fill);border-color:var(--yellow-edge)}.bstyle.s3{background:var(--green-fill);border-color:var(--green-edge)}
+.bstyle.s1{background:var(--t1-fill);border-color:var(--t1-edge)}.bstyle.s2{background:var(--t2-fill);border-color:var(--t2-edge)}.bstyle.s3{background:var(--t3-fill);border-color:var(--t3-edge)}
 .tgroup.clickable{cursor:pointer;transition:filter .12s,box-shadow .12s}
 .tgroup.clickable:hover{filter:brightness(1.06)}
 .tgroup[aria-pressed="true"]{box-shadow:0 0 0 3px var(--bg),0 0 0 5px var(--tedge)}

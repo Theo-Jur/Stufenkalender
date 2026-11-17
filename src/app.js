@@ -23,7 +23,7 @@ const narrow=matchMedia('(max-width:700px)');
 let START=6*60;
 const TIERS={1:{name:'Fix',rule:'wird nie verschoben'},2:{name:'Wichtig',rule:'weicht nur Stufe 1 aus'},3:{name:'Flexibel',rule:'weicht allem aus'}};
 const COLORS=['red','orange','yellow','green','teal','blue','violet','pink'];
-const TC={1:'red',2:'yellow',3:'green'}; // Farbe = Priorität
+const TC={1:'t1',2:'t2',3:'t3'}; // Farbklasse je Stufe (k-t1 …), Farbe = Priorität
 const COLOR_NAMES={red:'Rot',orange:'Orange',yellow:'Gelb',green:'Grün',teal:'Türkis',blue:'Blau',violet:'Violett',pink:'Pink'};
 const KEY='stufenkalender-v2';
 
