@@ -629,6 +629,8 @@ function openDetail(id){
   $('ov-detail').hidden=false; setTimeout(()=>$('dt-close').focus(),0);
 }
 $('dt-close').onclick=()=>{$('ov-detail').hidden=true;};
+$('helpbtn').onclick=()=>{$('ov-help').hidden=false; setTimeout(()=>{$('help-close').focus({preventScroll:true}); $('ov-help').querySelector('.dialog').scrollTop=0;},0);};
+$('help-close').onclick=()=>{$('ov-help').hidden=true; $('helpbtn').focus();};
 
 /* ---------- Kalender importieren (.ics) ---------- */
 const unesc=v=>v.replace(/\\n/gi,'\n').replace(/\\([,;\\])/g,'$1');
@@ -953,8 +955,8 @@ $('pform').addEventListener('submit',ev=>{
 });
 
 /* Dialoge schließen */
-['ov-ev','ov-cat','ov-sleep','ov-place','ov-prop','ov-detail','ov-import'].forEach(id=>$(id).addEventListener('click',ev=>{if(ev.target.id===id) $(id).hidden=true;}));
-document.addEventListener('keydown',ev=>{if(ev.key==='Escape'){['ov-ev','ov-cat','ov-sleep','ov-place','ov-prop','ov-detail','ov-import'].forEach(id=>$(id).hidden=true);}});
+['ov-ev','ov-cat','ov-sleep','ov-place','ov-prop','ov-detail','ov-import','ov-help'].forEach(id=>$(id).addEventListener('click',ev=>{if(ev.target.id===id) $(id).hidden=true;}));
+document.addEventListener('keydown',ev=>{if(ev.key==='Escape'){['ov-ev','ov-cat','ov-sleep','ov-place','ov-prop','ov-detail','ov-import','ov-help'].forEach(id=>$(id).hidden=true);}});
 
 let savedMode='plan'; try{savedMode=localStorage.getItem(KEY+'-mode')||'plan';}catch(e){}
 setMode(savedMode);
