@@ -40,11 +40,12 @@ const DEFAULT_TRAVEL=30;
 const pkey=(a,b)=>a<b?a+'|'+b:b+'|'+a;
 function fresh(){return {cats:clone(SEED_CATS),events:[],hidden:{},buffer:15,nextId:100,
   sleep:{mode:'split',wd:{wake:420,bed:1380},we:{wake:540,bed:30},days:null},
-  places:[{id:'home',name:'Zuhause'}],home:'home',travel:{},lockMode:'eve'};}
+  places:[{id:'home',name:'Zuhause'}],home:'home',travel:{},lockMode:'eve',todos:[]};}
 function normalize(s){
   const st=(s&&Array.isArray(s.events)&&Array.isArray(s.cats))?Object.assign(fresh(),clone(s)):fresh();
   // Früher hing „Gewohnheit“ an einzelnen Serien, jetzt an der Kategorie
   st.events.forEach(e=>{ if(e.habit){const c=st.cats.find(x=>x.id===e.cat); if(c) c.habit=true;} delete e.habit; });
+  if(!Array.isArray(st.todos)) st.todos=[];
   return st;
 }
 let state=normalize(initial);
@@ -70,6 +71,9 @@ function undoText(prev){
   if(b<a) return a-b>1?`${a-b} Termine gelöscht.`:'Termin gelöscht.';
   if(b>a) return b-a>1?`${b-a} Termine angelegt.`:'Termin angelegt.';
   if(JSON.stringify(prev.events)!==JSON.stringify(state.events)) return 'Termin geändert.';
+  const ta=(prev.todos||[]).length, tb=(state.todos||[]).length;
+  if(tb>ta) return 'To-do angelegt.'; if(tb<ta) return 'To-do entfernt.';
+  if(JSON.stringify(prev.todos||[])!==JSON.stringify(state.todos||[])) return 'To-do geändert.';
   return 'Einstellung geändert.';
 }
 function doUndo(){
@@ -168,6 +172,66 @@ function renderHabits(){
       <div class="hdots" aria-label="Letzte Tage mit ${esc(c.name)}">${dots||'<span class="hfree">Noch keine vergangenen Termine</span>'}</div>
       <div class="hfoot">${btn}<span class="hbest">Rekord ${st.best}</span></div></div>`;}).join('')+'</div>';
 }
+/* ---------- To-dos ----------
+   state.todos = [{id,title,cat,dur,due}] – Aufgaben ohne feste Zeit. Wird ein To-do in den Kalender
+   gezogen oder ein Vorschlag übernommen, wird daraus ein normaler Termin (mit fromTodo:true, due). */
+const todoEv=t=>({id:'todo:'+t.id,todoId:t.id,title:t.title,cat:t.cat,dur:t.dur,loc:null,day:TODAY,start:0});
+function durTxt(m){const h=Math.floor(m/60), r=m%60; return (h?h+' h':'')+(h&&r?' ':'')+(r?r+' min':'');}
+// Nächste passende Lücke in der angezeigten Woche (ab jetzt, vor der Frist)
+function todoSuggest(t,taken=[]){
+  const e=todoEv(t), placed=othersPlaced(e.id).concat(taken);
+  for(const d of weekDays()){
+    if(d<TODAY) continue; if(t.due!=null&&d>t.due) break;
+    for(let m=START;m<=END-t.dur;m+=STEP){
+      // Vorschläge immer in eine wirklich freie Lücke – auch für Fix-To-dos, und nie in die Schlafenszeit
+      if(d*1440+m<Math.ceil((nowAbs()+1)/STEP)*STEP||inSleep(d,m,t.dur)) continue;
+      if(fits({day:d,start:m,dur:t.dur,loc:null},placed,state.buffer).ok) return {day:d,start:m,dur:t.dur};
+    }
+  }
+  return null;
+}
+function scheduleTodo(tid,day,start){
+  const i=state.todos.findIndex(x=>x.id===tid); if(i<0) return; const t=state.todos[i];
+  const before=propSnapshot();
+  state.todos.splice(i,1);
+  state.events.push({id:state.nextId++,title:t.title,cat:t.cat,day,start,dur:t.dur,loc:null,note:'',rec:null,locked:false,fromTodo:true,due:t.due??null});
+  delete state.hidden[t.cat];
+  render(); toast(`${t.title}: eingeplant für ${wdl(day)}, ${dtxt(day)} ${fmt(start)}.`); showNewProps(before,t.title);
+}
+function doneTodo(tid){
+  const i=state.todos.findIndex(x=>x.id===tid); if(i<0) return; const t=state.todos.splice(i,1)[0];
+  render(); toast(`${t.title} erledigt.`);
+}
+function renderTodos(){
+  const list=state.todos.slice().sort((a,b)=>(a.due??1e9)-(b.due??1e9));
+  $('todocount').textContent=list.length?list.length:'';
+  $('todohint').textContent=list.length?'Zieh sie in den Kalender – grün markierte Bereiche passen – oder nimm den Vorschlag.':'Aufgaben ohne feste Zeit, z. B. „Hausarbeit gliedern“. Leg sie mit „+ To-do“ an.';
+  const taken=[]; // Vorschläge sollen sich nicht gegenseitig überschneiden (dringendste zuerst)
+  $('todolist').innerHTML=list.map(t=>{
+    const c=catOf(t), sug=todoSuggest(t,taken); if(sug) taken.push({id:'sug:'+t.id,day:sug.day,start:sug.start,dur:sug.dur,loc:null});
+    const dueTxt=t.due==null?'':t.due<TODAY?` · <span class="over">überfällig (${dtxt(t.due)})</span>`:t.due===TODAY?' · <b>heute fällig</b>':` · bis ${wd(t.due)} ${dtxt(t.due)}`;
+    return `<div class="tchip todo k-${TC[c.tier]}" data-todo="${t.id}" aria-label="${esc(t.title)} – zum Einplanen in den Kalender ziehen">
+      <span class="grip">⠿ ZIEHEN</span>
+      <button type="button" class="tedit" data-todoedit="${t.id}" title="Bearbeiten">${esc(t.title)}</button>
+      <span class="h">${durTxt(t.dur)}${dueTxt}</span>
+      <div class="tacts">${sug?`<button type="button" data-todosug="${t.id}" data-day="${sug.day}" data-start="${sug.start}">Vorschlag: ${wd(sug.day)} ${fmt(sug.start)}</button>`:`<span class="nos">${t.due!=null&&t.due<weekDays()[0]?'Frist liegt vor dieser Woche':'Kein Platz in dieser Woche'}</span>`}
+        <button type="button" class="tdone" data-tododone="${t.id}" aria-label="${esc(t.title)} als erledigt abhaken" title="Erledigt">✓</button></div>
+    </div>`;}).join('');
+}
+let editTodo=null;
+function openTodo(tid){
+  if(!state.cats.length){openMgr(); return;}
+  const t=tid?state.todos.find(x=>x.id===tid):null; editTodo=t?t.id:null;
+  $('t-head').textContent=t?'To-do bearbeiten':'Neues To-do';
+  $('t-cat').innerHTML=[1,2,3].map(n=>{const cs=state.cats.filter(c=>c.tier===n); if(!cs.length) return '';
+    return `<optgroup label="Stufe ${n} · ${TIERS[n].name}">${cs.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('')}</optgroup>`;}).join('');
+  $('t-title').value=t?t.title:''; $('t-cat').value=t?t.cat:(state.cats.find(c=>c.tier===2)||state.cats[0]).id;
+  $('t-dur').value=String(t?t.dur:60); if(!$('t-dur').value) $('t-dur').value='60';
+  $('t-due').value=t&&t.due!=null?isoDate(t.due):'';
+  $('t-del').hidden=!t; $('t-err').hidden=true; syncTodoCat();
+  $('ov-todo').hidden=false; setTimeout(()=>$('t-title').focus(),0);
+}
+function syncTodoCat(){const c=state.cats.find(x=>x.id===$('t-cat').value); if(c) $('t-catinfo').textContent=`Stufe ${c.tier} · ${TIERS[c.tier].name}: ${TIERS[c.tier].rule}`;}
 let EV=[];
 const seriesOf=iid=>state.events.find(x=>x.id===(EV.find(i=>i.id===iid)||{}).sid);
 // Einen einzelnen Termin verschieben: bei Serien nur dieses eine Mal (Ausnahme)
@@ -483,7 +547,7 @@ function render(){
   flashIds=new Set();
   if(prevPlan) Object.keys(plan).forEach(id=>{const a=plan[id],b=prevPlan[id]; if(b&&!a.unplaced&&!b.unplaced&&(a.day!==b.day||a.start!==b.start)) flashIds.add(id);});
   prevPlan=plan;
-  renderFilters(); renderGrid(plan); renderLog(plan); renderNext(plan); renderSeg(); renderHabits(); save(); trackUndo();
+  renderFilters(); renderGrid(plan); renderLog(plan); renderNext(plan); renderSeg(); renderHabits(); renderTodos(); save(); trackUndo();
 }
 
 /* ---------- Filter-Interaktion ---------- */
@@ -555,6 +619,9 @@ document.addEventListener('click',ev=>{
   if(b=ev.target.closest('[data-mini]')){const id=b.dataset.mini, c=state.cats.find(x=>x.id===id);
     if(isOnly([id])) setOnly(state.cats.filter(x=>x.tier===c.tier).map(x=>x.id)); else setOnly([id]); render(); return;}
   if(b=ev.target.closest('[data-habitcat]')){toggleHabitToday(b.dataset.habitcat); return;}
+  if(!justDragged&&(b=ev.target.closest('[data-todosug]'))){scheduleTodo(b.dataset.todosug,+b.dataset.day,+b.dataset.start); return;}
+  if(b=ev.target.closest('[data-tododone]')){doneTodo(b.dataset.tododone); return;}
+  if(!justDragged&&(b=ev.target.closest('[data-todoedit]'))){openTodo(b.dataset.todoedit); return;}
   if(justDragged) return;
   if(b=ev.target.closest('[data-accept]')){accept([b.dataset.accept]); return;}
   if(justDragged) return;
@@ -570,6 +637,21 @@ $('showall').onclick=()=>{state.hidden={}; render();};
 $('buf').addEventListener('change',()=>{state.buffer=+$('buf').value; render();});
 $('lockm').addEventListener('change',()=>{state.lockMode=$('lockm').value; render();});
 $('add').onclick=()=>openForm(null);
+$('todoadd').onclick=()=>openTodo(null);
+$('t-cat').addEventListener('change',syncTodoCat);
+$('t-cancel').onclick=()=>{$('ov-todo').hidden=true;};
+$('t-del').onclick=()=>{const i=state.todos.findIndex(x=>x.id===editTodo); if(i<0) return; const t=state.todos.splice(i,1)[0]; $('ov-todo').hidden=true; render(); toast(`To-do „${t.title}“ gelöscht.`);};
+$('tform').addEventListener('submit',ev=>{
+  ev.preventDefault();
+  const fail=m=>{$('t-err').textContent=m; $('t-err').hidden=false;};
+  const title=$('t-title').value.trim(); if(!title) return fail('Schreib kurz, was zu tun ist.');
+  const cat=$('t-cat').value, dur=+$('t-dur').value, due=$('t-due').value?fromIso($('t-due').value):null;
+  if(due!=null&&due<TODAY&&!editTodo) return fail('Das Datum liegt in der Vergangenheit.');
+  if(editTodo){const t=state.todos.find(x=>x.id===editTodo); Object.assign(t,{title,cat,dur,due});}
+  else state.todos.push({id:'t'+(state.nextId++),title,cat,dur,due});
+  delete state.hidden[cat];
+  $('ov-todo').hidden=true; render();
+});
 $('setbtn').onclick=()=>{$('ov-settings').hidden=false; setTimeout(()=>$('set-close').focus(),0);};
 $('set-close').onclick=()=>{$('ov-settings').hidden=true; $('setbtn').focus();};
 // Ein Unterpunkt öffnet sein eigenes Fenster und schließt die Einstellungen
@@ -1040,6 +1122,7 @@ function endDrag(){
   const tg=drag.target, e=drag.e; cleanupDrag();
   if(!tg) return;
   if(!tg.ok){ toast(tierOf(e)===1?'Diese Zeit liegt in der Vergangenheit oder außerhalb des Kalenders.':'Hier passt der Termin nicht. Grün markierte Bereiche passen.'); return; }
+  if(e.todoId){scheduleTodo(e.todoId,tg.day,tg.start); return;}
   const before=propSnapshot();
   setInst(e.id,tg.day,tg.start); render();
   toast(`${e.title}: ${wdl(tg.day)}, ${dtxt(tg.day)} ${fmt(tg.start)}${e.series?' (nur dieser Termin der Serie)':''}`);
@@ -1048,9 +1131,12 @@ function endDrag(){
 document.addEventListener('pointerdown',ev=>{
   if(mode!=='plan'||ev.button>0||drag) return;
   if(ev.target.closest('button[data-accept]')&&!ev.target.closest('.slotprop')) return;
-  const el=ev.target.closest('.tchip[data-drag], .ev[data-id], .slotprop[data-accept]'); if(!el) return;
-  const id=el.dataset.drag||el.dataset.id||el.dataset.accept, e=EV.find(x=>x.id===id); if(!e) return;
-  if(lockReason(e)==='past') return;
+  if(ev.target.closest('[data-todosug],[data-tododone]')) return;
+  const el=ev.target.closest('.tchip[data-todo], .tchip[data-drag], .ev[data-id], .slotprop[data-accept]'); if(!el) return;
+  let id, e;
+  if(el.dataset.todo){const t=state.todos.find(x=>x.id===el.dataset.todo); if(!t) return; e=todoEv(t); id=e.id;}
+  else{ id=el.dataset.drag||el.dataset.id||el.dataset.accept; e=EV.find(x=>x.id===id); if(!e) return;
+    if(lockReason(e)==='past') return; }
   const r=el.getBoundingClientRect(), inCal=!el.classList.contains('tchip');
   drag={id,e,el,x0:ev.clientX,y0:ev.clientY,x:ev.clientX,y:ev.clientY,started:false,pid:ev.pointerId,grabMin:inCal?Math.max(0,(ev.clientY-r.top)/PX):0};
 });
@@ -1128,8 +1214,8 @@ $('pform').addEventListener('submit',ev=>{
 });
 
 /* Dialoge schließen */
-['ov-ev','ov-cat','ov-sleep','ov-place','ov-prop','ov-detail','ov-import','ov-help','ov-settings'].forEach(id=>$(id).addEventListener('click',ev=>{if(ev.target.id===id) $(id).hidden=true;}));
-document.addEventListener('keydown',ev=>{if(ev.key==='Escape'){['ov-ev','ov-cat','ov-sleep','ov-place','ov-prop','ov-detail','ov-import','ov-help','ov-settings'].forEach(id=>$(id).hidden=true);}});
+['ov-ev','ov-cat','ov-sleep','ov-place','ov-prop','ov-detail','ov-import','ov-help','ov-settings','ov-todo'].forEach(id=>$(id).addEventListener('click',ev=>{if(ev.target.id===id) $(id).hidden=true;}));
+document.addEventListener('keydown',ev=>{if(ev.key==='Escape'){['ov-ev','ov-cat','ov-sleep','ov-place','ov-prop','ov-detail','ov-import','ov-help','ov-settings','ov-todo'].forEach(id=>$(id).hidden=true);}});
 
 let savedMode='plan'; try{savedMode=localStorage.getItem(KEY+'-mode')||'plan';}catch(e){}
 setMode(savedMode);

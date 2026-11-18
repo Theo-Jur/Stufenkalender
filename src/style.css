@@ -498,3 +498,21 @@ aside{position:sticky;top:12px}
 .ev.done .t{text-decoration:line-through;text-decoration-thickness:1.5px}
 .crow .chabit{grid-column:1 / -1;display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
 .crow .chabit input{width:auto}
+
+/* To-dos */
+.todos{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 14px;display:flex;flex-direction:column;gap:10px}
+.todohead{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px}
+.todohead h2{font-family:var(--f-display);font-size:16px;margin:0;display:flex;align-items:center;gap:6px}
+.todocount:not(:empty){display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;padding:0 6px;border-radius:999px;background:var(--accent);color:var(--accent-fg);font-size:12px;font-family:var(--f-body)}
+.todohint{flex:1 1 240px;font-size:12.5px;color:var(--muted)}
+#todolist:empty{display:none}
+.tchip.todo{gap:4px}
+.tchip.todo .tedit{all:unset;cursor:pointer;font-weight:600;font-size:13.5px;color:inherit;overflow-wrap:anywhere}
+.tchip.todo .tedit:hover{text-decoration:underline}
+.tchip.todo .tedit:focus-visible{outline:2px solid var(--tink);outline-offset:2px;border-radius:3px}
+.tchip.todo .over{color:inherit;font-weight:700;text-decoration:underline}
+.tacts{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:2px}
+.tacts button{margin-top:0}
+.tacts .nos{font-size:11.5px;opacity:.85}
+.tchip.todo .tdone{width:30px;height:30px;padding:0;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;font-size:15px;font-weight:700;flex:none}
+.tchip.todo .tdone:hover{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}

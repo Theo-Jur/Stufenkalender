@@ -10,7 +10,7 @@
 - Der Planer verschiebt **nie selbst**. Verdrängte Termine landen in der Ablage „Neu einplanen“; Theo zieht sie per Drag & Drop in den Kalender (grüne Bereiche passen) oder übernimmt den Vorschlag.
 - Festschreiben (ab Vorabend 20 Uhr, einstellbar oder pro Termin), nichts in die Vergangenheit, Schlafzeiten sind tabu für Stufe 2/3, Wegzeiten zwischen Orten (vom Ort des vorherigen Termins, sonst Zuhause).
 - Zwei Modi: **Planen** (alles bearbeitbar) und **Alltag** (nur ansehen, kleine Stufen-Filter, „Jetzt/Als Nächstes“, Termin antippen zeigt Details).
-- Weitere Funktionen: Abhaken und Gewohnheiten mit Serien (Streaks), wiederkehrende Termine (täglich/wöchentlich/2-wöchentlich, Wochentage, Enddatum), Bemerkungen, beliebige Dauer, Wochen blättern, .ics-Import, Orte & Wege, Kategorien verwalten.
+- Weitere Funktionen: To-dos (Ablage „Zu erledigen“), Abhaken und Gewohnheiten mit Serien (Streaks), wiederkehrende Termine (täglich/wöchentlich/2-wöchentlich, Wochentage, Enddatum), Bemerkungen, beliebige Dauer, Wochen blättern, .ics-Import, Orte & Wege, Kategorien verwalten.
 
 ## Technik
 - Vite + reines JavaScript (kein Framework), PWA über `vite-plugin-pwa`, Supabase für Login (E-Mail + Passwort) und Speicherung. Hosting: Vercel, verbunden mit GitHub.
@@ -36,6 +36,7 @@
   - `uid` nur bei importierten Terminen (erneuter Import aktualisiert statt zu verdoppeln).
   - `done` = erledigte Vorkommen `{[Tagesnummer des Vorkommens]: 1}` (optional, auch bei Einzelterminen). Nur Vorkommen bis heute lassen sich abhaken.
   - Gewohnheiten gelten pro **Kategorie** (`cat.habit`), alle Termine der Kategorie zählen zusammen (Leiste „Gewohnheiten“ im Alltag-Modus, `habitStats(catId)`). Gezählt werden Tage mit mindestens einem geplanten Termin der Kategorie; ein Tag ist geschafft, wenn mindestens einer abgehakt ist. Ein noch offener Tag „heute“ bricht die Serie nicht. Früheres `event.habit` wird in `normalize` auf die Kategorie umgezogen (18.11.2026).
+- `todos`: `[{id,title,cat,dur,due}]` – Aufgaben ohne feste Zeit (Ablage „Zu erledigen“ im Planen-Modus, `due` = Tagesnummer oder null). Ziehen in den Kalender oder Vorschlag übernehmen macht daraus einen normalen Termin mit `fromTodo: true, due` (`scheduleTodo`). ✓ entfernt das To-do. Vorschläge (`todoSuggest`) suchen nur in der angezeigten Woche eine wirklich freie Lücke vor der Frist und überschneiden sich nicht gegenseitig.
 - Angezeigt und geplant wird mit Einzelterminen der sichtbaren Woche (`buildEV`), ids `"<id>@<tag>"`; Änderungen an Einzelterminen über `setInst`.
 - Weitere Felder: `hidden` (Filter), `buffer`, `lockMode`, `sleep`, `nextId`.
 - **Wenn sich das Datenformat ändert:** alte gespeicherte Daten müssen weiter laden (`normalize` in `app.js` ergänzt fehlende Felder). Vorher Theo Bescheid sagen.
@@ -57,5 +58,6 @@ Alle Ausgaben enden mit `ERRORS []`, wenn alles passt. Danach normal `npm run bu
 - Planer prüft nur die angezeigte Woche.
 - .ics-Import ist einmalig (kein laufender Abgleich mit Google/Apple).
 - Gewohnheiten: Chess.com (öffentliche API, nur Benutzername) und Strava (OAuth, braucht Strava-Abo + Vercel-Funktion) als automatische Quellen wurden besprochen, Theo wollte vorerst nur das manuelle Abhaken (18.11.2026).
+- To-dos, nächste Schritte (mit Theo besprochen): Hinweis, wenn die Frist näher rückt und kein Zeitblock geplant ist; eingeplante, nicht abgehakte To-dos nach ihrer Zeit zurück in die Ablage; Kleinkram-Liste (< 15 min) „Heute noch“ im Alltag-Modus.
 - Keine Push-Erinnerungen, keine ganztägigen oder mitternachtsübergreifenden Termine, Wegzeiten von Hand.
 - `app.js` ist groß; bei größeren Umbauen in Module aufteilen.

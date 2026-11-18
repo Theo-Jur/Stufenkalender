@@ -87,6 +87,15 @@
 
 
       <div class="filters plan-only" id="filters"></div>
+      <section class="todos plan-only" id="todos" aria-labelledby="todo-h">
+        <div class="todohead">
+          <h2 id="todo-h">Zu erledigen <span class="todocount" id="todocount"></span></h2>
+          <span class="todohint" id="todohint">Aufgaben ohne feste Zeit. Zieh sie in den Kalender, grün markierte Bereiche passen.</span>
+          <button type="button" class="btn small" id="todoadd">+ To-do</button>
+        </div>
+        <div class="traylist" id="todolist"></div>
+      </section>
+
       <div class="bar">
         <div class="weeknav">
           <button type="button" class="wbtn" id="wprev" aria-label="Vorherige Woche">‹</button>
@@ -174,6 +183,25 @@
       </div>
     </div>
 
+    <!-- To-do -->
+    <div class="overlay" id="ov-todo" hidden>
+      <form class="dialog" id="tform" novalidate>
+        <h2 id="t-head">Neues To-do</h2>
+        <div class="field"><label for="t-title">Was ist zu tun?</label><input id="t-title" autocomplete="off" maxlength="120" placeholder="z. B. Hausarbeit Mikro gliedern"></div>
+        <div class="field"><label for="t-cat">Kategorie</label><select id="t-cat"></select><span class="catinfo" id="t-catinfo"></span></div>
+        <div class="row2">
+          <div class="field"><label for="t-dur">Wie lange ungefähr?</label>
+            <select id="t-dur"><option value="15">15 min</option><option value="30">30 min</option><option value="45">45 min</option><option value="60" selected>1 h</option><option value="90">1,5 h</option><option value="120">2 h</option><option value="180">3 h</option><option value="240">4 h</option></select></div>
+          <div class="field"><label for="t-due">Bis wann? (optional)</label><input type="date" id="t-due"></div>
+        </div>
+        <p class="err" id="t-err" hidden></p>
+        <div class="dfoot">
+          <div class="dels"><button type="button" class="btn danger" id="t-del" hidden>Löschen</button></div>
+          <div class="right"><button type="button" class="btn" id="t-cancel">Abbrechen</button><button type="submit" class="btn primary">Speichern</button></div>
+        </div>
+      </form>
+    </div>
+
     <!-- So funktioniert's -->
     <div class="overlay" id="ov-help" hidden>
       <div class="dialog wide hint" role="dialog" aria-modal="true" aria-labelledby="help-title">
@@ -190,6 +218,7 @@
           <li><b>Kalender importieren</b> (unter Einstellungen): Termine aus einer .ics-Datei, z. B. deinem Stundenplan. Sie bekommen eine Stufe wie alle anderen Termine.</li>
           <li><b>Wiederkehrend</b> (↻): Beim Anlegen anhaken. Verschiebst du einen Termin einer Serie, gilt das nur für dieses eine Mal.</li>
           <li><b>Neuer Termin</b>: Tipp auf eine freie Stelle im Kalender – Tag und Uhrzeit sind dann schon eingetragen. Oder nimm den Knopf „+ Termin“.</li>
+          <li><b>To-dos</b>: Aufgaben ohne feste Zeit kommen über „+ To-do“ in die Ablage „Zu erledigen“ – mit Dauer, Kategorie und optional „bis wann“. Zieh sie in den Kalender (grün = passt) oder tippe auf den Vorschlag, dann werden sie zum Termin. Mit ✓ hakst du sie direkt ab.</li>
           <li><b>Gewohnheiten</b>: Eine ganze Kategorie (z. B. Training) wird zur Gewohnheit: im Termin-Fenster unter der Kategorie „… als Gewohnheit verfolgen“ anhaken oder unter Einstellungen → Kategorien verwalten. Alle Termine dieser Kategorie zählen zusammen. Im Alltag-Modus siehst du dann deine Serie und kannst mit „Heute abhaken“ erledigen. Jeden Termin kannst du außerdem antippen und als erledigt markieren. Die Serie zählt nur Tage, an denen ein Termin dieser Kategorie geplant ist – Ruhetage brechen sie also nicht.</li>
           <li><b>Rückgängig</b>: Nach jeder Änderung erscheint unten kurz „Rückgängig“ (am Computer auch Strg+Z).</li>
           <li>Jeden Termin kannst du auch direkt im Kalender verschieben, indem du ihn ziehst. Tippen öffnet ihn zum Bearbeiten.</li>
