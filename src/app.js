@@ -20,9 +20,9 @@ let VIEW=CURWEEK; // angezeigte Woche
 const weekDays=()=>[0,1,2,3,4,5,6].map(i=>VIEW*7+i);
 let mode='plan';
 const narrow=matchMedia('(max-width:700px)');
-// Handy im Alltag-Modus: immer drei Tage nebeneinander (ab DAY0), blättern in 3-Tage-Schritten – auch über Wochengrenzen
+// Handy: immer drei Tage nebeneinander (ab DAY0), blättern in 3-Tage-Schritten – auch über Wochengrenzen
 let DAY0=TODAY;
-const threeDay=()=>mode==='daily'&&narrow.matches;
+const threeDay=()=>narrow.matches; // Handy: in beiden Modi drei Tage, kein seitliches Scrollen
 const win3=()=>[DAY0,DAY0+1,DAY0+2];
 let START=6*60;
 const TIERS={1:{name:'Fix',rule:'wird nie verschoben'},2:{name:'Wichtig',rule:'weicht nur Stufe 1 aus'},3:{name:'Flexibel',rule:'weicht allem aus'}};
@@ -184,7 +184,7 @@ function durTxt(m){const h=Math.floor(m/60), r=m%60; return (h?h+' h':'')+(h&&r?
 // Nächste passende Lücke in der angezeigten Woche (ab jetzt, vor der Frist)
 function todoSuggest(t,taken=[]){
   const e=todoEv(t), placed=othersPlaced(e.id).concat(taken);
-  for(const d of weekDays()){
+  for(const d of shownDays()){
     if(d<TODAY) continue; if(t.due!=null&&d>t.due) break;
     for(let m=START;m<=END-t.dur;m+=STEP){
       // Vorschläge immer in eine wirklich freie Lücke – auch für Fix-To-dos, und nie in die Schlafenszeit
@@ -218,7 +218,7 @@ function renderTodos(){
       <span class="grip">⠿ ZIEHEN</span>
       <button type="button" class="tedit" data-todoedit="${t.id}" title="Bearbeiten">${esc(t.title)}</button>
       <span class="h">${durTxt(t.dur)}${dueTxt}</span>
-      <div class="tacts">${sug?`<button type="button" data-todosug="${t.id}" data-day="${sug.day}" data-start="${sug.start}">Vorschlag: ${wd(sug.day)} ${fmt(sug.start)}</button>`:`<span class="nos">${t.due!=null&&t.due<weekDays()[0]?'Frist liegt vor dieser Woche':'Kein Platz in dieser Woche'}</span>`}
+      <div class="tacts">${sug?`<button type="button" data-todosug="${t.id}" data-day="${sug.day}" data-start="${sug.start}">Vorschlag: ${wd(sug.day)} ${fmt(sug.start)}</button>`:`<span class="nos">${t.due!=null&&t.due<shownDays()[0]?'Frist liegt vorher':threeDay()?'Kein Platz in diesen Tagen':'Kein Platz in dieser Woche'}</span>`}
         <button type="button" class="tdone" data-tododone="${t.id}" aria-label="${esc(t.title)} als erledigt abhaken" title="Erledigt">✓</button></div>
     </div>`;}).join('');
 }
@@ -395,7 +395,7 @@ function lanes(items){
 function shownDays(){ return threeDay()?win3():weekDays(); }
 function renderGrid(plan){
   const H=(END-START)*PX, daily=mode==='daily', days=shownDays();
-  const g=$('grid'); g.style.gridTemplateColumns=`52px repeat(${days.length},minmax(0,1fr))`; g.style.minWidth=days.length===7?'760px':'0';
+  const g=$('grid'); g.style.gridTemplateColumns=`52px repeat(${days.length},minmax(0,1fr))`; g.style.minWidth='0';
   let html='<div class="dh" aria-hidden="true"></div>';
   days.forEach(i=>html+=`<div class="dh${i===TODAY?' today':''}"><div class="d">${wd(i)}</div><div class="n">${dtxt(i)}${i===TODAY?' · heute':''}</div></div>`);
   let times='';
@@ -553,7 +553,9 @@ function renderWeek(){
   }
 }
 function shiftDays(n){DAY0+=n; prevPlan=null; render();}
-function goWeek(w){VIEW=w; prevPlan=null; render(); const cal=document.querySelector('.cal'); if(cal) cal.scrollLeft=0;}
+function goWeek(w){VIEW=w; prevPlan=null; render();}
+// Sorgt dafür, dass Tag d zu sehen ist (Woche bzw. 3-Tage-Fenster am Handy)
+function showDay(d){ if(threeDay()){ if(!win3().includes(d)) DAY0=d; } else if(Math.floor(d/7)!==VIEW) VIEW=Math.floor(d/7); }
 $('wprev').onclick=()=>threeDay()?shiftDays(-3):goWeek(VIEW-1);
 $('wnext').onclick=()=>threeDay()?shiftDays(3):goWeek(VIEW+1);
 $('wtoday').onclick=()=>{if(threeDay()){DAY0=TODAY; prevPlan=null; render();} else goWeek(CURWEEK);};
@@ -733,7 +735,7 @@ function openForm(iid,preset){
   $('f-head').textContent=e?(e.rec?'Serie bearbeiten':'Termin bearbeiten'):'Neuer Termin';
   $('f-title').value=e?e.title:'';
   fillCatSelect(e?e.cat:(state.cats.find(c=>c.tier===3)||state.cats[0]).id);
-  const defDay=preset?preset.day:VIEW===CURWEEK?TODAY:VIEW*7;
+  const defDay=preset?preset.day:threeDay()?(win3().includes(TODAY)?TODAY:DAY0):VIEW===CURWEEK?TODAY:VIEW*7;
   $('f-day').value=isoDate(e?e.day:defDay); $('f-time').value=fmt(e?e.start:preset?preset.start:1080);
   $('f-rec').checked=!!(e&&e.rec); $('f-freq').value=e&&e.rec?e.rec.freq:'weekly';
   $('f-until').value=e&&e.rec&&e.rec.until!=null?isoDate(e.rec.until):'';
@@ -797,7 +799,7 @@ $('form').addEventListener('submit',ev=>{
   else state.events.push(Object.assign({id:state.nextId++},data));
   delete state.hidden[cat];
   closeForm();
-  if(Math.floor(day/7)!==VIEW&&!editing) VIEW=Math.floor(day/7);
+  if(!editing) showDay(day);
   render(); showNewProps(before,title);
 });
 
@@ -1078,7 +1080,7 @@ $('iform').addEventListener('submit',ev=>{
   const imp=state.events.filter(e=>e.cat===cat&&e.uid); let first=Infinity;
   imp.forEach(e=>{for(let d=Math.max(CURWEEK*7,e.day);d<CURWEEK*7+400;d++){ if(occursOn(e,d)&&!(e.ex&&e.ex[d]==='skip')){first=Math.min(first,d);break;} }});
   if(mode!=='plan') setMode('plan');
-  if(first!==Infinity&&Math.floor(first/7)!==VIEW&&!imp.some(e=>weekDays().some(d=>occursOn(e,d)))) VIEW=Math.floor(first/7);
+  if(first!==Infinity&&!imp.some(e=>shownDays().some(d=>occursOn(e,d)))) showDay(first);
   prevPlan=null; render();
   toast(`${added} Termin${added===1?'':'e'} importiert${updated?`, ${updated} aktualisiert`:''}.`);
   showNewProps(before,'den Import');
@@ -1192,7 +1194,6 @@ function setMode(m){
   document.body.classList.toggle('daily',mode==='daily');
   document.querySelectorAll('[data-mode]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.mode===mode)));
   prevPlan=null; render();
-  if(mode==='daily'){const cal=document.querySelector('.cal'); cal.scrollTop=Math.max(0,(NOW.min-START-90)*PX);}
 }
 narrow.addEventListener('change',()=>{ if(threeDay()) DAY0=VIEW===CURWEEK?TODAY:VIEW*7; prevPlan=null; render(); });
 setInterval(()=>{const n=new Date(); if(dayOfDate(n)!==NOW.day){location.reload();return;} NOW.min=n.getHours()*60+n.getMinutes(); if(mode==='daily') render();},60000);
