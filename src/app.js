@@ -20,6 +20,10 @@ let VIEW=CURWEEK; // angezeigte Woche
 const weekDays=()=>[0,1,2,3,4,5,6].map(i=>VIEW*7+i);
 let mode='plan';
 const narrow=matchMedia('(max-width:700px)');
+// Handy im Alltag-Modus: immer drei Tage nebeneinander (ab DAY0), blättern in 3-Tage-Schritten – auch über Wochengrenzen
+let DAY0=TODAY;
+const threeDay=()=>mode==='daily'&&narrow.matches;
+const win3=()=>[DAY0,DAY0+1,DAY0+2];
 let START=6*60;
 const TIERS={1:{name:'Fix',rule:'wird nie verschoben'},2:{name:'Wichtig',rule:'weicht nur Stufe 1 aus'},3:{name:'Flexibel',rule:'weicht allem aus'}};
 const COLORS=['red','orange','yellow','green','teal','blue','violet','pink'];
@@ -388,11 +392,7 @@ function lanes(items){
   items.forEach(it=>{let m=it.lane; items.forEach(o=>{if(o.start<it.start+it.dur&&o.start+o.dur>it.start) m=Math.max(m,o.lane);}); it.cols=m+1;});
 }
 
-function shownDays(){
-  const w=weekDays();
-  if(mode==='daily'&&narrow.matches&&VIEW===CURWEEK) return [TODAY,TODAY+1,TODAY+2].filter(d=>w.includes(d));
-  return w;
-}
+function shownDays(){ return threeDay()?win3():weekDays(); }
 function renderGrid(plan){
   const H=(END-START)*PX, daily=mode==='daily', days=shownDays();
   const g=$('grid'); g.style.gridTemplateColumns=`52px repeat(${days.length},minmax(0,1fr))`; g.style.minWidth=days.length===7?'760px':'0';
@@ -462,10 +462,10 @@ function renderNext(plan){
   const goLine=x=>{const tr=TRAVEL[x.e.id]; if(!tr||!tr.min) return ''; return `<span class="go">Los um ${fmt(tr.leave)} ab ${esc(placeName(tr.from))} (${tr.est?'ca. ':''}${tr.min} min)</span>`;};
   let html=cur.map(x=>card(x,'Jetzt',`bis ${fmt((x.a+x.e.dur)%1440)}`,'now')).join('');
   html+=up.map((x,i)=>card(x,i===0?'Als Nächstes':'Danach',relTime(x.a),'',goLine(x))).join('');
-  if(!cur.length&&!up.length) html='<div class="nx"><span class="lbl">Als Nächstes</span><span class="tt">Diese Woche steht nichts mehr an.</span></div>';
+  if(!cur.length&&!up.length) html=`<div class="nx"><span class="lbl">Als Nächstes</span><span class="tt">${threeDay()?'In den nächsten Tagen steht nichts mehr an.':'Diese Woche steht nichts mehr an.'}</span></div>`;
   if(PROPS) html+=`<div class="pbanner">${PROPS} Vorschl${PROPS>1?'äge warten':'ag wartet'} auf deine Bestätigung. <button type="button" data-mode="plan">Im Planen-Modus prüfen</button></div>`;
   $('next').innerHTML=html;
-  $('next').hidden=VIEW!==CURWEEK; // Jetzt/Als Nächstes gilt nur für die aktuelle Woche
+  $('next').hidden=threeDay()?!win3().includes(TODAY):VIEW!==CURWEEK; // Jetzt/Als Nächstes gilt nur, wenn heute zu sehen ist
 }
 function activeTier(){
   const vis=state.cats.filter(c=>!state.hidden[c.id]);
@@ -545,19 +545,33 @@ function renderWeek(){
   const a=dateOf(VIEW*7), b=dateOf(VIEW*7+6);
   const range=a.getMonth()===b.getMonth()?`${a.getDate()}.–${b.getDate()}. ${MONTHS[b.getMonth()]} ${b.getFullYear()}`:`${a.getDate()}. ${MONTHS[a.getMonth()]} – ${b.getDate()}. ${MONTHS[b.getMonth()]} ${b.getFullYear()}`;
   $('weeklabel').textContent=`KW ${isoWeek(a)} · ${range}`;
-  $('wtoday').hidden=VIEW===CURWEEK;
+  $('wtoday').hidden=VIEW===CURWEEK; $('wtoday').textContent='Zur aktuellen Woche';
+  if(threeDay()){
+    const x=dateOf(DAY0), y=dateOf(DAY0+2), kx=isoWeek(x), ky=isoWeek(y);
+    $('weeklabel').textContent=`KW ${kx}${ky!==kx?'/'+ky:''} · ${wd(DAY0)} ${x.getDate()}.${x.getMonth()!==y.getMonth()?' '+MONTHS[x.getMonth()].slice(0,3)+'.':''} – ${wd(DAY0+2)} ${y.getDate()}. ${MONTHS[y.getMonth()].slice(0,3)}.`;
+    $('wtoday').hidden=DAY0===TODAY; $('wtoday').textContent='Heute';
+  }
 }
+function shiftDays(n){DAY0+=n; prevPlan=null; render();}
 function goWeek(w){VIEW=w; prevPlan=null; render(); const cal=document.querySelector('.cal'); if(cal) cal.scrollLeft=0;}
-$('wprev').onclick=()=>goWeek(VIEW-1);
-$('wnext').onclick=()=>goWeek(VIEW+1);
-$('wtoday').onclick=()=>goWeek(CURWEEK);
+$('wprev').onclick=()=>threeDay()?shiftDays(-3):goWeek(VIEW-1);
+$('wnext').onclick=()=>threeDay()?shiftDays(3):goWeek(VIEW+1);
+$('wtoday').onclick=()=>{if(threeDay()){DAY0=TODAY; prevPlan=null; render();} else goWeek(CURWEEK);};
+// Plan einer ganzen Woche (der Planer arbeitet immer wochenweise)
+function planWeek(w){
+  const keepV=VIEW, keepE=EV; VIEW=w;
+  const ev=buildEV(), pl=schedule(ev,state.buffer); EV=ev; const tr=computeTravel(pl);
+  VIEW=keepV; EV=keepE; return {ev,pl,tr};
+}
 function render(){
   const wakes=[0,1,2,3,4,5,6].map(wakeOf);
-  EV=buildEV();
+  if(threeDay()) VIEW=Math.floor(DAY0/7);
+  const weeks=threeDay()?[...new Set(win3().map(d=>Math.floor(d/7)))]:[VIEW];
+  const plan={}; EV=[]; TRAVEL={};
+  weeks.forEach(w=>{const r=planWeek(w); EV.push(...r.ev); Object.assign(plan,r.pl); Object.assign(TRAVEL,r.tr);});
   START=Math.min(6*60,Math.floor(Math.min(...wakes,...EV.map(e=>e.start))/60)*60);
-  const plan=schedule(EV,state.buffer); PLAN=plan;
+  PLAN=plan;
   renderWeek();
-  TRAVEL=computeTravel(plan);
   flashIds=new Set();
   if(prevPlan) Object.keys(plan).forEach(id=>{const a=plan[id],b=prevPlan[id]; if(b&&!a.unplaced&&!b.unplaced&&(a.day!==b.day||a.start!==b.start)) flashIds.add(id);});
   prevPlan=plan;
@@ -610,6 +624,7 @@ $('filters').addEventListener('contextmenu',ev=>{const b=ev.target.closest('[dat
     const t=ev.changedTouches[0], dx=t.clientX-sw.x, dy=t.clientY-sw.y, ms=Date.now()-sw.t; const s0=sw; sw=null;
     if(Math.abs(dx)<60||Math.abs(dy)>Math.abs(dx)*0.6||ms>700) return;
     const max=cal.scrollWidth-cal.clientWidth;
+    if(threeDay()){ shiftDays(dx<0?3:-3); toast($('weeklabel').textContent); return; }
     if(dx<0){ if(max>2&&s0.sl<max-2) return; goWeek(VIEW+1); }
     else { if(max>2&&s0.sl>2) return; goWeek(VIEW-1); const m=cal.scrollWidth-cal.clientWidth; if(m>2) cal.scrollLeft=m; }
     toast($('weeklabel').textContent);
@@ -1172,14 +1187,14 @@ document.addEventListener('keydown',ev=>{
 
 /* ---------- Modus ---------- */
 function setMode(m){
-  mode=m==='daily'?'daily':'plan'; if(mode==='daily') VIEW=CURWEEK;
+  mode=m==='daily'?'daily':'plan'; if(mode==='daily'){VIEW=CURWEEK; DAY0=TODAY;}
   try{localStorage.setItem(KEY+'-mode',mode);}catch(e){}
   document.body.classList.toggle('daily',mode==='daily');
   document.querySelectorAll('[data-mode]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.mode===mode)));
   prevPlan=null; render();
   if(mode==='daily'){const cal=document.querySelector('.cal'); cal.scrollTop=Math.max(0,(NOW.min-START-90)*PX);}
 }
-narrow.addEventListener('change',()=>render());
+narrow.addEventListener('change',()=>{ if(threeDay()) DAY0=VIEW===CURWEEK?TODAY:VIEW*7; prevPlan=null; render(); });
 setInterval(()=>{const n=new Date(); if(dayOfDate(n)!==NOW.day){location.reload();return;} NOW.min=n.getHours()*60+n.getMinutes(); if(mode==='daily') render();},60000);
 
 /* ---------- Orte & Wege ---------- */
