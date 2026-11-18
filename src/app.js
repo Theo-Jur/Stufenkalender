@@ -20,9 +20,9 @@ let VIEW=CURWEEK; // angezeigte Woche
 const weekDays=()=>[0,1,2,3,4,5,6].map(i=>VIEW*7+i);
 let mode='plan';
 const narrow=matchMedia('(max-width:700px)');
-// Handy: immer drei Tage nebeneinander (ab DAY0), blättern in 3-Tage-Schritten – auch über Wochengrenzen
+// Handy im Alltag-Modus: immer drei Tage nebeneinander (ab DAY0), blättern in 3-Tage-Schritten – auch über Wochengrenzen
 let DAY0=TODAY;
-const threeDay=()=>narrow.matches; // Handy: in beiden Modi drei Tage, kein seitliches Scrollen
+const threeDay=()=>narrow.matches&&mode==='daily'; // Handy im Alltag: drei Tage; im Planen ganze Woche, seitlich scrollbar
 const win3=()=>[DAY0,DAY0+1,DAY0+2];
 let START=6*60;
 const TIERS={1:{name:'Fix',rule:'wird nie verschoben'},2:{name:'Wichtig',rule:'weicht nur Stufe 1 aus'},3:{name:'Flexibel',rule:'weicht allem aus'}};
@@ -395,7 +395,7 @@ function lanes(items){
 function shownDays(){ return threeDay()?win3():weekDays(); }
 function renderGrid(plan){
   const H=(END-START)*PX, daily=mode==='daily', days=shownDays();
-  const g=$('grid'); g.style.gridTemplateColumns=`52px repeat(${days.length},minmax(0,1fr))`; g.style.minWidth='0';
+  const g=$('grid'); g.style.gridTemplateColumns=`52px repeat(${days.length},minmax(0,1fr))`; g.style.minWidth=days.length===7&&narrow.matches?'760px':'0';
   let html='<div class="dh" aria-hidden="true"></div>';
   days.forEach(i=>html+=`<div class="dh${i===TODAY?' today':''}"><div class="d">${wd(i)}</div><div class="n">${dtxt(i)}${i===TODAY?' · heute':''}</div></div>`);
   let times='';
@@ -577,7 +577,7 @@ function render(){
   flashIds=new Set();
   if(prevPlan) Object.keys(plan).forEach(id=>{const a=plan[id],b=prevPlan[id]; if(b&&!a.unplaced&&!b.unplaced&&(a.day!==b.day||a.start!==b.start)) flashIds.add(id);});
   prevPlan=plan;
-  renderFilters(); renderGrid(plan); renderLog(plan); renderNext(plan); renderSeg(); renderHabits(); renderTodos(); renderQuick(); save(); trackUndo();
+  renderFilters(); renderGrid(plan); renderLog(plan); renderNext(plan); renderSeg(); renderHabits(); renderTodos(); renderQuick(); stickHead(); save(); trackUndo();
 }
 
 /* ---------- Filter-Interaktion ---------- */
@@ -612,6 +612,16 @@ $('filters').addEventListener('pointerdown',ev=>{
 // Rechtsklick am Computer; auf manchen Handys feuert langes Drücken zusätzlich „contextmenu“ – dann nicht doppelt
 $('filters').addEventListener('contextmenu',ev=>{const b=ev.target.closest('[data-cattog]'); if(!b) return; ev.preventDefault(); clearTimeout(lpT);
   if(Date.now()-longPressAt<800) return; longPressAt=Date.now(); soloCat(b.dataset.cattog);});
+
+// Am Handy im Planen-Modus scrollt die Woche seitlich. Dort klebt die Tageszeile nicht von selbst
+// am oberen Rand, deshalb wird sie beim Scrollen der Seite mitgeschoben.
+function stickHead(){
+  const cal=document.querySelector('.cal'), g=$('grid'); if(!cal||!g) return;
+  if(!(narrow.matches&&mode==='plan')){ g.style.removeProperty('--dhs'); return; }
+  const r=cal.getBoundingClientRect(), h=(g.querySelector('.dh')||{offsetHeight:0}).offsetHeight;
+  g.style.setProperty('--dhs', Math.max(0,Math.min(-r.top, r.height-h-40))+'px');
+}
+addEventListener('scroll',stickHead,{passive:true}); addEventListener('resize',stickHead);
 
 /* Wischen im Kalender (Touch): Wochen blättern. Lässt sich die Woche seitlich scrollen,
    wird erst am Rand umgeblättert. */

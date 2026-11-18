@@ -261,6 +261,11 @@ h1{font-family:var(--f-display);font-weight:700;font-size:30px;letter-spacing:-.
 
 /* Kalender ist Teil der Seite: kein eigenes Scrollfenster, die Seite scrollt; die Tageszeile bleibt oben kleben */
 .cal{background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:clip;min-width:0}
+/* Ausnahme auf Theos Wunsch: am Handy im Planen-Modus ganze Woche, seitlich scrollbar (Tageszeile per JS: --dhs) */
+@media (max-width:700px){
+  body:not(.daily) .cal{overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch}
+  body:not(.daily) .grid .dh{transform:translateY(var(--dhs,0px))}
+}
 .grid{display:grid;grid-template-columns:52px repeat(7,minmax(0,1fr))}
 .dh{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--surface);border-bottom:1px solid var(--line);padding:10px 8px 8px;text-align:center}
 .dh .d{font-weight:600}
