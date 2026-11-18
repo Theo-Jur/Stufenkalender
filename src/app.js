@@ -103,6 +103,51 @@ function buildEV(){
   });
   return out;
 }
+/* ---------- Abhaken und Gewohnheiten ----------
+   event.done = {[Tagesnummer des Vorkommens]: 1}, event.habit = true (nur bei Serien).
+   Eine Serie zählt nur geplante Vorkommen – Tage ohne Termin unterbrechen sie nicht. */
+const isDone=inst=>!!(inst&&inst.done&&inst.done[inst.occ]);
+function toggleDone(sid,occ){
+  const s=state.events.find(x=>x.id===sid); if(!s) return;
+  s.done=s.done||{}; const was=!!s.done[occ];
+  if(was) delete s.done[occ]; else s.done[occ]=1;
+  if(!Object.keys(s.done).length) delete s.done;
+  render();
+  if(was) toast(`${s.title}: nicht mehr erledigt.`);
+  else if(s.habit){const st=habitStats(s); toast(`${s.title} erledigt – ${st.streak} am Stück${st.streak>1&&st.streak>=st.best?' (Rekord!)':''}.`);}
+  else toast(`${s.title} erledigt.`);
+}
+// Alle Vorkommen einer Serie bis heute, mit ihrem tatsächlichen Tag (verschobene berücksichtigt)
+function pastOcc(e,limit=400){
+  const out=[];
+  for(let d=Math.max(e.day,TODAY-limit); d<=TODAY+7; d++){
+    if(!occursOn(e,d)) continue; const x=e.ex&&e.ex[d]; if(x==='skip') continue;
+    const day=x?x.day:d; if(day>TODAY) continue; out.push({occ:d,day});
+  }
+  return out.sort((a,b)=>a.day-b.day);
+}
+function habitStats(e){
+  const occ=pastOcc(e), done=e.done||{};
+  const today=occ.find(o=>o.day===TODAY)||null;
+  let list=occ; if(today&&!done[today.occ]) list=occ.filter(o=>o!==today); // heute zählt erst, wenn erledigt
+  let streak=0; for(let i=list.length-1;i>=0&&done[list[i].occ];i--) streak++;
+  let best=0,run=0; occ.forEach(o=>{ if(done[o.occ]){run++; best=Math.max(best,run);} else if(o!==today) run=0; });
+  const recent=occ.slice(-10).map(o=>({...o,state:done[o.occ]?'done':o===today?'today':'miss'}));
+  return {streak,best,today,recent,total:occ.filter(o=>done[o.occ]).length};
+}
+const FLAME='<svg class="flame" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M12 2c1 3.5-1.5 5-1.5 7.5 0 1.4 1 2.5 2.3 2.5 1.6 0 2.4-1.3 2.2-3 2.3 1.8 3.5 4.3 3.5 6.6C18.5 19.3 15.6 22 12 22s-6.5-2.7-6.5-6.4C5.5 10.4 10.5 7.6 12 2z"/></svg>';
+function renderHabits(){
+  const hs=state.events.filter(e=>e.habit&&e.rec);
+  const box=$('habits'); box.hidden=!hs.length; if(!hs.length){box.innerHTML='';return;}
+  box.innerHTML='<h2 class="hhead">Gewohnheiten</h2><div class="hlist">'+hs.map(e=>{
+    const c=catOf(e), st=habitStats(e), dn=st.today&&e.done&&e.done[st.today.occ];
+    const dots=st.recent.map(o=>`<span class="hd ${o.state}" title="${wd(o.day)} ${dtxt(o.day)}: ${o.state==='done'?'erledigt':o.state==='today'?'heute':'nicht erledigt'}"></span>`).join('');
+    const btn=st.today?`<button type="button" class="hbtn${dn?' on':''}" data-habit="${e.id}" data-occ="${st.today.occ}" aria-pressed="${!!dn}">${dn?'✓ Heute erledigt':'Heute abhaken'}</button>`:'<span class="hfree">Heute nicht geplant</span>';
+    return `<div class="hcard k-${TC[c.tier]}">
+      <div class="htop"><span class="htitle">${esc(e.title)}</span><span class="hstreak${st.streak?'':' zero'}" title="Rekord: ${st.best}">${FLAME}${st.streak}</span></div>
+      <div class="hdots" aria-label="Letzte Termine">${dots||'<span class="hfree">Noch keine vergangenen Termine</span>'}</div>
+      <div class="hfoot">${btn}<span class="hbest">Rekord ${st.best}</span></div></div>`;}).join('')+'</div>';
+}
 let EV=[];
 const seriesOf=iid=>state.events.find(x=>x.id===(EV.find(i=>i.id===iid)||{}).sid);
 // Einen einzelnen Termin verschieben: bei Serien nur dieses eine Mal (Ausnahme)
@@ -279,9 +324,9 @@ function renderGrid(plan){
       const lock=p.locked&&p.locked!=='past'&&c.tier!==1?LOCK_SVG:'';
       const firstLine=e.note?e.note.split('\n')[0]:'';
       const inner=short
-        ?`<span class="one"><span class="t">${esc(e.title)}${e.series?'<span class="rp" title="Wiederkehrend">↻</span>':''}</span><span class="h">${lock}${fmt(p.start)}</span></span>`
-        :`<span class="t">${esc(e.title)}${e.series?'<span class="rp" title="Wiederkehrend">↻</span>':''}</span><span class="h">${lock}${fmt(p.start)}–${fmt(p.start+e.dur)}${where?' · '+esc(where):''}</span>${firstLine&&e.dur>=45?`<span class="nt">${esc(firstLine)}</span>`:''}`;
-      const cls=`${p.moved?' prop':''}${p.locked==='past'?' past':''}${e.dur<=75?' compact':''}`;
+        ?`<span class="one"><span class="t">${isDone(e)?'<span class="ck" aria-label="erledigt">✓</span>':''}${esc(e.title)}${e.series?'<span class="rp" title="Wiederkehrend">↻</span>':''}</span><span class="h">${lock}${fmt(p.start)}</span></span>`
+        :`<span class="t">${isDone(e)?'<span class="ck" aria-label="erledigt">✓</span>':''}${esc(e.title)}${e.series?'<span class="rp" title="Wiederkehrend">↻</span>':''}</span><span class="h">${lock}${fmt(p.start)}–${fmt(p.start+e.dur)}${where?' · '+esc(where):''}</span>${firstLine&&e.dur>=45?`<span class="nt">${esc(firstLine)}</span>`:''}`;
+      const cls=`${p.moved?' prop':''}${p.locked==='past'?' past':''}${e.dur<=75?' compact':''}${isDone(e)?' done':''}`;
       const tr=TRAVEL[e.id]; let trv='';
       if(tr&&tr.min>0){
         const top=Math.max(0,tr.leave-START), h=(p.start-START-top)*PX;
@@ -354,7 +399,7 @@ function renderLog(plan){
     else if(p.by.kind==='travel'){why=`Der Weg von oder zu <b>${esc(p.by.title)}</b> (${p.by.min} min) hätte nicht gereicht`; short=`den Weg zu ${esc(p.by.title)}`;}
     else{const bc=catOf(p.by); why=`Platz gemacht für <b>${esc(p.by.title)}</b> (${esc(bc.name)}, Stufe ${bc.tier})`; short=esc(p.by.title);}
     const durTxt=`${Math.floor(e.dur/60)?Math.floor(e.dur/60)+' h ':''}${e.dur%60?e.dur%60+' min':''}`.trim();
-    const head=`<span class="grip">⠿ ZIEHEN</span><span class="t">${esc(e.title)}</span><span class="h">${durTxt} · war ${wd(e.day)} ${fmt(e.start)}</span>`;
+    const head=`<span class="grip">⠿ ZIEHEN</span><span class="t">${isDone(e)?'<span class="ck" aria-label="erledigt">✓</span>':''}${esc(e.title)}</span><span class="h">${durTxt} · war ${wd(e.day)} ${fmt(e.start)}</span>`;
     if(p.unplaced) props.push({o:e.day*1440+e.start,h:`<div class="tchip k-${TC[c.tier]} s${c.tier}" data-drag="${e.id}" aria-label="${esc(e.title)} neu einplanen">${head}<span class="bad">Kein freier Platz mehr. Zieh ihn selbst in den Kalender oder kürze die Dauer.</span></div>`});
     else props.push({o:p.day*1440+p.start,h:`<div class="tchip k-${TC[c.tier]} s${c.tier}" data-drag="${e.id}" aria-label="${esc(e.title)} neu einplanen">${head}<span class="why">${why}</span><button type="button" data-accept="${e.id}">Vorschlag: ${wd(p.day)} ${fmt(p.start)}</button></div>`});
   });
@@ -418,7 +463,7 @@ function render(){
   flashIds=new Set();
   if(prevPlan) Object.keys(plan).forEach(id=>{const a=plan[id],b=prevPlan[id]; if(b&&!a.unplaced&&!b.unplaced&&(a.day!==b.day||a.start!==b.start)) flashIds.add(id);});
   prevPlan=plan;
-  renderFilters(); renderGrid(plan); renderLog(plan); renderNext(plan); renderSeg(); save(); trackUndo();
+  renderFilters(); renderGrid(plan); renderLog(plan); renderNext(plan); renderSeg(); renderHabits(); save(); trackUndo();
 }
 
 /* ---------- Filter-Interaktion ---------- */
@@ -489,6 +534,7 @@ document.addEventListener('click',ev=>{
   if(b=ev.target.closest('[data-seg]')){const t=+b.dataset.seg; if(t===0) state.hidden={}; else setOnly(state.cats.filter(c=>c.tier===t).map(c=>c.id)); render(); return;}
   if(b=ev.target.closest('[data-mini]')){const id=b.dataset.mini, c=state.cats.find(x=>x.id===id);
     if(isOnly([id])) setOnly(state.cats.filter(x=>x.tier===c.tier).map(x=>x.id)); else setOnly([id]); render(); return;}
+  if(b=ev.target.closest('[data-habit]')){toggleDone(+b.dataset.habit||b.dataset.habit,+b.dataset.occ); return;}
   if(justDragged) return;
   if(b=ev.target.closest('[data-accept]')){accept([b.dataset.accept]); return;}
   if(justDragged) return;
@@ -558,12 +604,15 @@ function openForm(iid,preset){
   const defDay=preset?preset.day:VIEW===CURWEEK?TODAY:VIEW*7;
   $('f-day').value=isoDate(e?e.day:defDay); $('f-time').value=fmt(e?e.start:preset?preset.start:1080);
   $('f-rec').checked=!!(e&&e.rec); $('f-freq').value=e&&e.rec?e.rec.freq:'weekly';
+  $('f-habit').checked=!!(e&&e.habit);
   $('f-until').value=e&&e.rec&&e.rec.until!=null?isoDate(e.rec.until):'';
   recDays=e&&e.rec&&e.rec.days?e.rec.days.slice():[wdi(e?e.day:defDay)]; syncRec();
   setDur(e?e.dur:60);
   fillLocSelect(e?e.loc:''); $('f-newname').value=''; $('f-newmin').value=20; $('f-locked').checked=!!(e&&e.locked); $('f-note').value=e&&e.note?e.note:'';
   $('f-del').hidden=!e; $('f-del').textContent=e&&e.rec?'Ganze Serie löschen':'Löschen';
   $('f-delone').hidden=!(e&&e.rec);
+  { const show=!!inst&&inst.day<=TODAY; $('f-done').hidden=!show;
+    if(show) $('f-done').textContent=isDone(inst)?'✓ Erledigt – zurücknehmen':'Als erledigt markieren'; }
   $('f-err').hidden=true; syncCat(); syncLoc();
   $('ov-ev').hidden=false; setTimeout(()=>$('f-title').focus(),0);
 }
@@ -611,7 +660,7 @@ $('form').addEventListener('submit',ev=>{
     if(freq!=='daily'&&!recDays.length) return fail('Wähle mindestens einen Wochentag.');
     rec={freq,days:freq==='daily'?null:recDays.slice().sort(),until};
   }
-  const data={title,cat,day,start,dur,loc,note,rec,locked:c.tier!==1&&$('f-locked').checked};
+  const data={title,cat,day,start,dur,loc,note,rec,habit:!!rec&&$('f-habit').checked,locked:c.tier!==1&&$('f-locked').checked};
   if(editing){const i=state.events.findIndex(x=>x.id===editing); state.events[i]=Object.assign({},state.events[i],data,{id:editing}); if(!rec) delete state.events[i].ex;}
   else state.events.push(Object.assign({id:state.nextId++},data));
   delete state.hidden[cat];
@@ -713,9 +762,15 @@ function openDetail(id){
   if(tr&&tr.min) rows.push(['Los',`${fmt(tr.leave)} ab ${placeName(tr.from)} (${tr.est?'ca. ':''}${tr.min} min)`]);
   $('dt-list').innerHTML=rows.map(([k,v])=>`<dt>${k}</dt><dd>${esc(v)}</dd>`).join('');
   $('dt-note').hidden=!e.note; $('dt-note').textContent=e.note||'';
+  if(e.habit&&e.rec){const st=habitStats(state.events.find(x=>x.id===e.sid)); $('dt-list').insertAdjacentHTML('beforeend',`<dt>Serie</dt><dd>${st.streak} am Stück · Rekord ${st.best}</dd>`);}
+  const canDone=p.day<=TODAY; $('dt-done').hidden=!canDone; detailId=id;
+  if(canDone){const d=isDone(e); $('dt-done').textContent=d?'✓ Erledigt – zurücknehmen':'Als erledigt markieren'; $('dt-done').classList.toggle('on',d);}
   $('ov-detail').hidden=false; setTimeout(()=>$('dt-close').focus(),0);
 }
 $('dt-close').onclick=()=>{$('ov-detail').hidden=true;};
+let detailId=null;
+$('dt-done').onclick=()=>{const e=EV.find(x=>x.id===detailId); if(!e) return; $('ov-detail').hidden=true; toggleDone(e.sid,e.occ);};
+$('f-done').onclick=()=>{const inst=editingInst; if(!inst) return; closeForm(); toggleDone(inst.sid,inst.occ);};
 $('helpbtn').onclick=()=>{$('ov-help').hidden=false; setTimeout(()=>{$('help-close').focus({preventScroll:true}); $('ov-help').querySelector('.dialog').scrollTop=0;},0);};
 $('help-close').onclick=()=>{$('ov-help').hidden=true; $('helpbtn').focus();};
 

@@ -10,7 +10,7 @@
 - Der Planer verschiebt **nie selbst**. Verdrängte Termine landen in der Ablage „Neu einplanen“; Theo zieht sie per Drag & Drop in den Kalender (grüne Bereiche passen) oder übernimmt den Vorschlag.
 - Festschreiben (ab Vorabend 20 Uhr, einstellbar oder pro Termin), nichts in die Vergangenheit, Schlafzeiten sind tabu für Stufe 2/3, Wegzeiten zwischen Orten (vom Ort des vorherigen Termins, sonst Zuhause).
 - Zwei Modi: **Planen** (alles bearbeitbar) und **Alltag** (nur ansehen, kleine Stufen-Filter, „Jetzt/Als Nächstes“, Termin antippen zeigt Details).
-- Weitere Funktionen: wiederkehrende Termine (täglich/wöchentlich/2-wöchentlich, Wochentage, Enddatum), Bemerkungen, beliebige Dauer, Wochen blättern, .ics-Import, Orte & Wege, Kategorien verwalten.
+- Weitere Funktionen: Abhaken und Gewohnheiten mit Serien (Streaks), wiederkehrende Termine (täglich/wöchentlich/2-wöchentlich, Wochentage, Enddatum), Bemerkungen, beliebige Dauer, Wochen blättern, .ics-Import, Orte & Wege, Kategorien verwalten.
 
 ## Technik
 - Vite + reines JavaScript (kein Framework), PWA über `vite-plugin-pwa`, Supabase für Login (E-Mail + Passwort) und Speicherung. Hosting: Vercel, verbunden mit GitHub.
@@ -34,6 +34,8 @@
   - `rec` = `{freq:'daily'|'weekly'|'biweekly', days:[0-6]|null, until:Tagesnummer|null}`
   - `ex` = Ausnahmen einer Serie: `{[Tagesnummer]: 'skip' | {day,start}}`
   - `uid` nur bei importierten Terminen (erneuter Import aktualisiert statt zu verdoppeln).
+  - `done` = erledigte Vorkommen `{[Tagesnummer des Vorkommens]: 1}` (optional, auch bei Einzelterminen). Nur Vorkommen bis heute lassen sich abhaken.
+  - `habit: true` = Serie wird als Gewohnheit verfolgt (Leiste „Gewohnheiten“ im Alltag-Modus, Serie/Rekord über `habitStats`). Die Serie zählt nur geplante Vorkommen; ein noch offenes Vorkommen von heute bricht sie nicht.
 - Angezeigt und geplant wird mit Einzelterminen der sichtbaren Woche (`buildEV`), ids `"<id>@<tag>"`; Änderungen an Einzelterminen über `setInst`.
 - Weitere Felder: `hidden` (Filter), `buffer`, `lockMode`, `sleep`, `nextId`.
 - **Wenn sich das Datenformat ändert:** alte gespeicherte Daten müssen weiter laden (`normalize` in `app.js` ergänzt fehlende Felder). Vorher Theo Bescheid sagen.
@@ -54,5 +56,6 @@ Alle Ausgaben enden mit `ERRORS []`, wenn alles passt. Danach normal `npm run bu
 ## Bekannte Grenzen / mögliche nächste Schritte
 - Planer prüft nur die angezeigte Woche.
 - .ics-Import ist einmalig (kein laufender Abgleich mit Google/Apple).
+- Gewohnheiten: Chess.com (öffentliche API, nur Benutzername) und Strava (OAuth, braucht Strava-Abo + Vercel-Funktion) als automatische Quellen wurden besprochen, Theo wollte vorerst nur das manuelle Abhaken (18.11.2026).
 - Keine Push-Erinnerungen, keine ganztägigen oder mitternachtsübergreifenden Termine, Wegzeiten von Hand.
 - `app.js` ist groß; bei größeren Umbauen in Module aufteilen.

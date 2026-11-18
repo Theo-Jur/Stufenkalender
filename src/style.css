@@ -471,3 +471,28 @@ aside{position:sticky;top:12px}
 .chip .ctog{padding:5px 12px 5px 10px}
 .ev.compact .t,.ev.compact .h{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
 .ev.compact .one .h{display:inline}
+
+/* Gewohnheiten (Alltag) */
+.habits{display:flex;flex-direction:column;gap:8px}
+.hhead{font-family:var(--f-display);font-size:15px;font-weight:600;margin:0}
+.hlist{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}
+.hcard{background:var(--surface);border:1px solid var(--line);border-left:5px solid var(--tedge);border-radius:0 12px 12px 0;padding:10px 12px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.htop{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.htitle{font-weight:600;font-size:14.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.hstreak{display:inline-flex;align-items:center;gap:3px;font-weight:700;font-size:16px;color:#e8590c;font-variant-numeric:tabular-nums;flex:none}
+.hstreak.zero{color:var(--muted)}
+.hdots{display:flex;gap:5px;flex-wrap:wrap}
+.hd{width:14px;height:14px;border-radius:50%;border:2px solid var(--tedge)}
+.hd.done{background:var(--tedge);border-color:var(--tedge)}
+.hd.miss{background:transparent;border-color:var(--line-strong)}
+.hd.today{background:transparent;border-style:dashed}
+.hfoot{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.hbtn{border:1.5px solid var(--tedge);background:transparent;color:var(--fg);border-radius:999px;padding:5px 12px;font-size:13px;font-weight:600}
+.hbtn.on{background:var(--tfill);color:var(--tink)}
+.hbest,.hfree{font-size:12px;color:var(--muted)}
+
+/* Erledigt */
+.donebtn.on{background:var(--surface);border-color:var(--accent);color:var(--accent)}
+.ev .ck{display:inline-block;margin-right:3px;font-weight:700}
+.ev.done{opacity:.72}
+.ev.done .t{text-decoration:line-through;text-decoration-thickness:1.5px}

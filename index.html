@@ -83,6 +83,8 @@
           <div class="minis" id="minis"></div>
         </div>
       </div>
+      <section class="habits daily-only" id="habits" hidden aria-label="Gewohnheiten"></section>
+
 
       <div class="filters plan-only" id="filters"></div>
       <div class="bar">
@@ -188,6 +190,7 @@
           <li><b>Kalender importieren</b> (unter Einstellungen): Termine aus einer .ics-Datei, z. B. deinem Stundenplan. Sie bekommen eine Stufe wie alle anderen Termine.</li>
           <li><b>Wiederkehrend</b> (↻): Beim Anlegen anhaken. Verschiebst du einen Termin einer Serie, gilt das nur für dieses eine Mal.</li>
           <li><b>Neuer Termin</b>: Tipp auf eine freie Stelle im Kalender – Tag und Uhrzeit sind dann schon eingetragen. Oder nimm den Knopf „+ Termin“.</li>
+          <li><b>Gewohnheiten</b>: Beim Anlegen eines wiederkehrenden Termins „Als Gewohnheit verfolgen“ anhaken. Im Alltag-Modus siehst du dann oben deine Serie und kannst mit „Heute abhaken“ erledigen. Jeden Termin kannst du außerdem antippen und als erledigt markieren. Die Serie zählt nur die Tage, an denen der Termin wirklich geplant ist – Ruhetage brechen sie also nicht.</li>
           <li><b>Rückgängig</b>: Nach jeder Änderung erscheint unten kurz „Rückgängig“ (am Computer auch Strg+Z).</li>
           <li>Jeden Termin kannst du auch direkt im Kalender verschieben, indem du ihn ziehst. Tippen öffnet ihn zum Bearbeiten.</li>
           <li><b>Festgeschrieben</b> (Schloss) sind Termine kurz vor ihrem Beginn, vergangene Termine und alles, was du selbst festschreibst. Sie bewegen sich nicht mehr.</li>
@@ -204,7 +207,7 @@
         <div class="dthead"><span class="dot" id="dt-dot"></span><h2 id="dt-title"></h2></div>
         <dl class="dtl" id="dt-list"></dl>
         <div class="dtnote" id="dt-note" hidden></div>
-        <div class="dfoot"><div class="right"><button type="button" class="btn primary" id="dt-close">Schließen</button></div></div>
+        <div class="dfoot"><button type="button" class="btn donebtn" id="dt-done" hidden></button><div class="right"><button type="button" class="btn primary" id="dt-close">Schließen</button></div></div>
       </div>
     </div>
 
@@ -248,6 +251,7 @@
             <div class="field" id="f-wdrow"><span class="lbl" id="f-wdlbl">An diesen Tagen</span>
               <div class="wdpick" role="group" aria-labelledby="f-wdlbl" id="f-wd"></div></div>
             <span class="catinfo" id="f-recinfo"></span>
+            <label class="check" for="f-habit"><input type="checkbox" id="f-habit"> Als Gewohnheit verfolgen – abhaken und Serie zählen</label>
           </div>
         </div>
         <div class="field"><label for="f-note">Bemerkung</label>
@@ -258,6 +262,7 @@
           <div class="dels">
             <button type="button" class="btn danger" id="f-del" hidden>Löschen</button>
             <button type="button" class="btn danger" id="f-delone" hidden>Nur diesen Termin löschen</button>
+            <button type="button" class="btn donebtn" id="f-done" hidden></button>
           </div>
           <div class="right">
             <button type="button" class="btn" id="f-cancel">Abbrechen</button>
