@@ -10,7 +10,7 @@
 - Der Planer verschiebt **nie selbst**. Verdrängte Termine landen in der Ablage „Neu einplanen“; Theo zieht sie per Drag & Drop in den Kalender (grüne Bereiche passen) oder übernimmt den Vorschlag.
 - Festschreiben (ab Vorabend 20 Uhr, einstellbar oder pro Termin), nichts in die Vergangenheit, Schlafzeiten sind tabu für Stufe 2/3, Wegzeiten zwischen Orten (vom Ort des vorherigen Termins, sonst Zuhause).
 - Zwei Modi: **Planen** (alles bearbeitbar) und **Alltag** (nur ansehen, kleine Stufen-Filter, „Jetzt/Als Nächstes“, Termin antippen zeigt Details).
-- Weitere Funktionen: To-dos (Ablage „Zu erledigen“), Abhaken und Gewohnheiten mit Serien (Streaks), wiederkehrende Termine (täglich/wöchentlich/2-wöchentlich, Wochentage, Enddatum), Bemerkungen, beliebige Dauer, Wochen blättern, .ics-Import, Orte & Wege, Kategorien verwalten.
+- Weitere Funktionen: einfacher Workout-Tracker (Übungen, Sätze, kg, Wdh., letztes Mal), To-dos (Ablage „Zu erledigen“), Abhaken und Gewohnheiten mit Serien (Streaks), wiederkehrende Termine (täglich/wöchentlich/2-wöchentlich, Wochentage, Enddatum), Bemerkungen, beliebige Dauer, Wochen blättern, .ics-Import, Orte & Wege, Kategorien verwalten.
 
 ## Technik
 - Vite + reines JavaScript (kein Framework), PWA über `vite-plugin-pwa`, Supabase für Login (E-Mail + Passwort) und Speicherung. Hosting: Vercel, verbunden mit GitHub.
@@ -29,13 +29,14 @@
 
 ## Datenmodell (`state`, als ein JSON pro Konto gespeichert)
 - `cats`: `{id,name,tier,habit?}` – `habit: true` macht die ganze Kategorie zur Gewohnheit · `places`: `{id,name}` · `home`: Orts-id · `travel`: `{"a|b": Minuten}` (Schlüssel sortiert, siehe `pkey`)
-- `events`: `{id,title,cat,day,start,dur,loc,note,locked,rec,ex,uid}`
+- `events`: `{id,title,cat,day,start,dur,loc,note,locked,rec,ex,uid,done?,exercises?,wlog?,fromTodo?,due?}`
   - `day` = Tagesnummer ab Montag 9.11.2026 (`BASE`), kann negativ sein; `start`/`dur` in Minuten.
   - `rec` = `{freq:'daily'|'weekly'|'biweekly', days:[0-6]|null, until:Tagesnummer|null}`
   - `ex` = Ausnahmen einer Serie: `{[Tagesnummer]: 'skip' | {day,start}}`
   - `uid` nur bei importierten Terminen (erneuter Import aktualisiert statt zu verdoppeln).
   - `done` = erledigte Vorkommen `{[Tagesnummer des Vorkommens]: 1}` (optional, auch bei Einzelterminen). Nur Vorkommen bis heute lassen sich abhaken.
   - Gewohnheiten gelten pro **Kategorie** (`cat.habit`), alle Termine der Kategorie zählen zusammen (Leiste „Gewohnheiten“ im Alltag-Modus, `habitStats(catId)`). Gezählt werden Tage mit mindestens einem geplanten Termin der Kategorie; ein Tag ist geschafft, wenn mindestens einer abgehakt ist. Ein noch offener Tag „heute“ bricht die Serie nicht. Früheres `event.habit` wird in `normalize` auf die Kategorie umgezogen (18.11.2026).
+  - `exercises` = Übungsnamen fürs Workout (Plan der Serie, im Termin-Fenster eine pro Zeile). `wlog` = `{[Vorkommen]: {[Übung]: [{kg,reps}, …]}}`. Workout-Fenster (`openWorkout`) zeigt je Übung „Letztes Mal“ (`lastSets`: jüngster Eintrag dieser Übung, egal welche Serie) und füllt die Sätze damit vor; Speichern hakt den Termin ab. Theo will es bewusst **sehr simpel**: nur Übungsname, Sätze, kg, Wiederholungen, Vergleich mit letztem Mal (18.11.2026).
 - `todos`: `[{id,title,cat,dur,due}]` – Aufgaben ohne feste Zeit (Ablage „Zu erledigen“ im Planen-Modus, `due` = Tagesnummer oder null). Ziehen in den Kalender oder Vorschlag übernehmen macht daraus einen normalen Termin mit `fromTodo: true, due` (`scheduleTodo`). ✓ entfernt das To-do. Im Alltag-Modus zeigt der Kasten „Kurz erledigen“ (`renderQuick`) nicht eingeplante To-dos unter 30 min (`QUICK_MAX`) zum Abhaken plus Hinweis auf größere. Vorschläge (`todoSuggest`) suchen nur in der angezeigten Woche eine wirklich freie Lücke vor der Frist und überschneiden sich nicht gegenseitig.
 - Angezeigt und geplant wird mit Einzelterminen der sichtbaren Woche (`buildEV`), ids `"<id>@<tag>"`; Änderungen an Einzelterminen über `setInst`.
 - Handy (≤ 700 px) im **Alltag**-Modus: immer drei Tage ab `DAY0` (`threeDay()`, `win3()`, `showDay(d)`), Pfeile/Wischen blättern um 3 Tage, auch über Wochengrenzen. Der Plan wird dafür pro beteiligter Woche berechnet (`planWeek`) und zusammengeführt – der Planer bleibt wochenweise. To-do-Vorschläge nur in den angezeigten Tagen.

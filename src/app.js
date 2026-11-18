@@ -250,6 +250,60 @@ function openTodo(tid){
   $('ov-todo').hidden=false; setTimeout(()=>$('t-title').focus(),0);
 }
 function syncTodoCat(){const c=state.cats.find(x=>x.id===$('t-cat').value); if(c) $('t-catinfo').textContent=`Stufe ${c.tier} · ${TIERS[c.tier].name}: ${TIERS[c.tier].rule}`;}
+/* ---------- Workout ----------
+   event.exercises = ['Kniebeugen', …] (Plan der Serie), event.wlog = {[Vorkommen]: {[Übung]: [{kg,reps}, …]}}.
+   „Letztes Mal“ = jüngster Eintrag dieser Übung (egal aus welcher Serie) vor dem aktuellen Tag. */
+const numTxt=n=>String(n).replace('.',',');
+function lastSets(name,beforeDay){
+  const key=name.toLowerCase(); let best=null;
+  state.events.forEach(e=>{ if(!e.wlog) return;
+    Object.entries(e.wlog).forEach(([occ,log])=>{ occ=+occ; if(occ>=beforeDay) return;
+      const k=Object.keys(log).find(x=>x.toLowerCase()===key); if(!k||!log[k].length) return;
+      const day=(e.ex&&e.ex[occ]&&e.ex[occ].day)??occ;
+      if(!best||day>best.day) best={day,sets:log[k]}; }); });
+  return best;
+}
+let wInst=null;
+function openWorkout(inst){
+  const s=state.events.find(x=>x.id===inst.sid); if(!s||!s.exercises) return; wInst=inst;
+  const cur=(s.wlog&&s.wlog[inst.occ])||{};
+  $('w-head').textContent=`Workout: ${s.title}`;
+  $('w-sub').textContent=`${wdl(inst.day)}, ${dtxt(inst.day)}`;
+  $('w-list').innerHTML=s.exercises.map((name,i)=>{
+    const last=lastSets(name,inst.occ), mine=cur[name];
+    const rows=(mine||(last&&last.sets)||[{kg:'',reps:''},{kg:'',reps:''},{kg:'',reps:''}]);
+    const lastTxt=last?`Letztes Mal (${wd(last.day)} ${dtxt(last.day)}): `+last.sets.map(x=>`${x.kg!==''&&x.kg!=null?numTxt(x.kg)+' kg':'–'} × ${x.reps||'–'}`).join(' · '):'Noch kein früherer Eintrag.';
+    return `<div class="wex" data-ex="${i}"><div class="wname">${esc(name)}</div><div class="wlast">${lastTxt}</div>
+      <div class="wsets">${rows.map((r,j)=>wRow(i,j,r)).join('')}</div>
+      <div class="wbtns"><button type="button" class="linkbtn" data-wadd="${i}">+ Satz</button><button type="button" class="linkbtn" data-wdel="${i}">– Satz</button></div></div>`;}).join('');
+  $('ov-workout').hidden=false;
+}
+function wRow(i,j,r){return `<div class="wrow"><span class="wn">${j+1}.</span>
+  <label><input class="wkg" inputmode="decimal" value="${r.kg!==''&&r.kg!=null?numTxt(r.kg):''}" aria-label="Satz ${j+1} Gewicht in kg"> kg</label>
+  <span class="wx">×</span>
+  <label><input class="wreps" inputmode="numeric" value="${r.reps||''}" aria-label="Satz ${j+1} Wiederholungen"> Wdh.</label></div>`;}
+$('w-list').addEventListener('click',ev=>{
+  const a=ev.target.closest('[data-wadd]'), d=ev.target.closest('[data-wdel]'); if(!a&&!d) return;
+  const box=ev.target.closest('.wex').querySelector('.wsets'), rows=box.querySelectorAll('.wrow');
+  if(a){const prev=rows[rows.length-1]; const r=prev?{kg:prev.querySelector('.wkg').value.replace(',','.'),reps:prev.querySelector('.wreps').value}:{kg:'',reps:''};
+    box.insertAdjacentHTML('beforeend',wRow(+a.dataset.wadd,rows.length,r));}
+  else if(rows.length>1) rows[rows.length-1].remove();
+});
+$('w-cancel').onclick=()=>{$('ov-workout').hidden=true;};
+$('wform').addEventListener('submit',ev=>{
+  ev.preventDefault(); const inst=wInst; const s=inst&&state.events.find(x=>x.id===inst.sid); if(!s) return;
+  const log={};
+  s.exercises.forEach((name,i)=>{
+    const sets=[...document.querySelectorAll(`.wex[data-ex="${i}"] .wrow`)].map(r=>{
+      const kg=parseFloat(r.querySelector('.wkg').value.replace(',','.')), reps=parseInt(r.querySelector('.wreps').value,10);
+      return {kg:isNaN(kg)?'':kg, reps:isNaN(reps)?'':reps};}).filter(x=>x.kg!==''||x.reps!=='');
+    if(sets.length) log[name]=sets;
+  });
+  s.wlog=s.wlog||{}; if(Object.keys(log).length) s.wlog[inst.occ]=log; else delete s.wlog[inst.occ];
+  if(!Object.keys(s.wlog).length) delete s.wlog;
+  if(Object.keys(log).length){ s.done=s.done||{}; s.done[inst.occ]=1; }
+  $('ov-workout').hidden=true; render(); toast(`Workout gespeichert${Object.keys(log).length?' – Termin abgehakt':''}.`);
+});
 let EV=[];
 const seriesOf=iid=>state.events.find(x=>x.id===(EV.find(i=>i.id===iid)||{}).sid);
 // Einen einzelnen Termin verschieben: bei Serien nur dieses eine Mal (Ausnahme)
@@ -752,8 +806,10 @@ function openForm(iid,preset){
   recDays=e&&e.rec&&e.rec.days?e.rec.days.slice():[wdi(e?e.day:defDay)]; syncRec();
   setDur(e?e.dur:60);
   fillLocSelect(e?e.loc:''); $('f-newname').value=''; $('f-newmin').value=20; $('f-locked').checked=!!(e&&e.locked); $('f-note').value=e&&e.note?e.note:'';
+  $('f-ex').value=e&&e.exercises?e.exercises.join('\n'):'';
   $('f-del').hidden=!e; $('f-del').textContent=e&&e.rec?'Ganze Serie löschen':'Löschen';
   $('f-delone').hidden=!(e&&e.rec);
+  $('f-workout').hidden=!(inst&&inst.exercises&&inst.exercises.length&&inst.day<=TODAY);
   { const show=!!inst&&inst.day<=TODAY; $('f-done').hidden=!show;
     if(show) $('f-done').textContent=isDone(inst)?'✓ Erledigt – zurücknehmen':'Als erledigt markieren'; }
   $('f-err').hidden=true; syncCat(); syncLoc();
@@ -803,7 +859,8 @@ $('form').addEventListener('submit',ev=>{
     if(freq!=='daily'&&!recDays.length) return fail('Wähle mindestens einen Wochentag.');
     rec={freq,days:freq==='daily'?null:recDays.slice().sort(),until};
   }
-  const data={title,cat,day,start,dur,loc,note,rec,locked:c.tier!==1&&$('f-locked').checked};
+  const exercises=$('f-ex').value.split('\n').map(x=>x.trim()).filter(Boolean).slice(0,30);
+  const data={title,cat,day,start,dur,loc,note,rec,exercises:exercises.length?exercises:undefined,locked:c.tier!==1&&$('f-locked').checked};
   if($('f-habit').checked) c.habit=true; else delete c.habit;
   if(editing){const i=state.events.findIndex(x=>x.id===editing); state.events[i]=Object.assign({},state.events[i],data,{id:editing}); if(!rec) delete state.events[i].ex;}
   else state.events.push(Object.assign({id:state.nextId++},data));
@@ -909,11 +966,15 @@ function openDetail(id){
   $('dt-note').hidden=!e.note; $('dt-note').textContent=e.note||'';
   if(c.habit){const st=habitStats(c.id); $('dt-list').insertAdjacentHTML('beforeend',`<dt>Serie</dt><dd>${esc(c.name)}: ${st.streak} am Stück · Rekord ${st.best}</dd>`);}
   const canDone=p.day<=TODAY; $('dt-done').hidden=!canDone; detailId=id;
+  $('dt-workout').hidden=!(e.exercises&&e.exercises.length&&p.day<=TODAY);
+  { const lg=e.wlog&&e.wlog[e.occ]; if(lg) $('dt-list').insertAdjacentHTML('beforeend',`<dt>Workout</dt><dd>${Object.entries(lg).map(([n,ss])=>`${esc(n)}: ${ss.map(x=>`${x.kg!==''?numTxt(x.kg)+' kg':'–'}×${x.reps||'–'}`).join(', ')}`).join('<br>')}</dd>`); }
   if(canDone){const d=isDone(e); $('dt-done').textContent=d?'✓ Erledigt – zurücknehmen':'Als erledigt markieren'; $('dt-done').classList.toggle('on',d);}
   $('ov-detail').hidden=false; setTimeout(()=>$('dt-close').focus(),0);
 }
 $('dt-close').onclick=()=>{$('ov-detail').hidden=true;};
 let detailId=null;
+$('dt-workout').onclick=()=>{const e=EV.find(x=>x.id===detailId); if(!e) return; $('ov-detail').hidden=true; openWorkout(e);};
+$('f-workout').onclick=()=>{const inst=editingInst; if(!inst) return; closeForm(); openWorkout(inst);};
 $('dt-done').onclick=()=>{const e=EV.find(x=>x.id===detailId); if(!e) return; $('ov-detail').hidden=true; toggleDone(e.sid,e.occ);};
 $('f-done').onclick=()=>{const inst=editingInst; if(!inst) return; closeForm(); toggleDone(inst.sid,inst.occ);};
 $('helpbtn').onclick=()=>{$('ov-help').hidden=false; setTimeout(()=>{$('help-close').focus({preventScroll:true}); $('ov-help').querySelector('.dialog').scrollTop=0;},0);};
@@ -1254,8 +1315,8 @@ $('pform').addEventListener('submit',ev=>{
 });
 
 /* Dialoge schließen */
-['ov-ev','ov-cat','ov-sleep','ov-place','ov-prop','ov-detail','ov-import','ov-help','ov-settings','ov-todo'].forEach(id=>$(id).addEventListener('click',ev=>{if(ev.target.id===id) $(id).hidden=true;}));
-document.addEventListener('keydown',ev=>{if(ev.key==='Escape'){['ov-ev','ov-cat','ov-sleep','ov-place','ov-prop','ov-detail','ov-import','ov-help','ov-settings','ov-todo'].forEach(id=>$(id).hidden=true);}});
+['ov-ev','ov-cat','ov-sleep','ov-place','ov-prop','ov-detail','ov-import','ov-help','ov-settings','ov-todo','ov-workout'].forEach(id=>$(id).addEventListener('click',ev=>{if(ev.target.id===id) $(id).hidden=true;}));
+document.addEventListener('keydown',ev=>{if(ev.key==='Escape'){['ov-ev','ov-cat','ov-sleep','ov-place','ov-prop','ov-detail','ov-import','ov-help','ov-settings','ov-todo','ov-workout'].forEach(id=>$(id).hidden=true);}});
 
 let savedMode='plan'; try{savedMode=localStorage.getItem(KEY+'-mode')||'plan';}catch(e){}
 setMode(savedMode);

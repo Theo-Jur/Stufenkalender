@@ -203,6 +203,16 @@
       </form>
     </div>
 
+    <!-- Workout -->
+    <div class="overlay" id="ov-workout" hidden>
+      <form class="dialog wide" id="wform" novalidate>
+        <h2 id="w-head">Workout</h2>
+        <p class="lead" id="w-sub"></p>
+        <div id="w-list" class="wlist"></div>
+        <div class="dfoot"><div class="right"><button type="button" class="btn" id="w-cancel">Abbrechen</button><button type="submit" class="btn primary">Speichern</button></div></div>
+      </form>
+    </div>
+
     <!-- So funktioniert's -->
     <div class="overlay" id="ov-help" hidden>
       <div class="dialog wide hint" role="dialog" aria-modal="true" aria-labelledby="help-title">
@@ -220,6 +230,7 @@
           <li><b>Wiederkehrend</b> (↻): Beim Anlegen anhaken. Verschiebst du einen Termin einer Serie, gilt das nur für dieses eine Mal.</li>
           <li><b>Neuer Termin</b>: Tipp auf eine freie Stelle im Kalender – Tag und Uhrzeit sind dann schon eingetragen. Oder nimm den Knopf „+ Termin“.</li>
           <li><b>To-dos</b>: Aufgaben ohne feste Zeit kommen über „+ To-do“ in die Ablage „Zu erledigen“ – mit Dauer, Kategorie und optional „bis wann“. Zieh sie in den Kalender (grün = passt) oder tippe auf den Vorschlag, dann werden sie zum Termin. Mit ✓ hakst du sie direkt ab. Im Alltag-Modus siehst du kurze To-dos (unter 30 min) im Kasten „Kurz erledigen“ und kannst sie dort abhaken.</li>
+          <li><b>Workout</b>: Trag im Termin unter „Übungen fürs Workout“ deine Übungen ein (eine pro Zeile). Dann Termin antippen → „Workout“: Bei jeder Übung siehst du, was du letztes Mal geschafft hast, und die Sätze sind damit schon ausgefüllt. Ändere nur, was anders war, und speichere – der Termin ist dann abgehakt.</li>
           <li><b>Gewohnheiten</b>: Eine ganze Kategorie (z. B. Training) wird zur Gewohnheit: im Termin-Fenster unter der Kategorie „… als Gewohnheit verfolgen“ anhaken oder unter Einstellungen → Kategorien verwalten. Alle Termine dieser Kategorie zählen zusammen. Im Alltag-Modus siehst du dann deine Serie und kannst mit „Heute abhaken“ erledigen. Jeden Termin kannst du außerdem antippen und als erledigt markieren. Die Serie zählt nur Tage, an denen ein Termin dieser Kategorie geplant ist – Ruhetage brechen sie also nicht.</li>
           <li><b>Rückgängig</b>: Nach jeder Änderung erscheint unten kurz „Rückgängig“ (am Computer auch Strg+Z).</li>
           <li>Jeden Termin kannst du auch direkt im Kalender verschieben, indem du ihn ziehst. Tippen öffnet ihn zum Bearbeiten.</li>
@@ -237,7 +248,7 @@
         <div class="dthead"><span class="dot" id="dt-dot"></span><h2 id="dt-title"></h2></div>
         <dl class="dtl" id="dt-list"></dl>
         <div class="dtnote" id="dt-note" hidden></div>
-        <div class="dfoot"><button type="button" class="btn donebtn" id="dt-done" hidden></button><div class="right"><button type="button" class="btn primary" id="dt-close">Schließen</button></div></div>
+        <div class="dfoot"><div class="dels"><button type="button" class="btn primary" id="dt-workout" hidden>Workout</button><button type="button" class="btn donebtn" id="dt-done" hidden></button></div><div class="right"><button type="button" class="btn" id="dt-close">Schließen</button></div></div>
       </div>
     </div>
 
@@ -286,6 +297,9 @@
         </div>
         <div class="field"><label for="f-note">Bemerkung</label>
           <textarea id="f-note" rows="3" maxlength="1000" placeholder="z. B. Raum S14, Hörsaal C · oder dein Trainingsplan: 3×10 Kniebeugen, 3×8 Bankdrücken …"></textarea></div>
+        <div class="field"><label for="f-ex">Übungen fürs Workout (optional, eine pro Zeile)</label>
+          <textarea id="f-ex" rows="3" maxlength="1000" placeholder="Kniebeugen&#10;Bankdrücken&#10;Rudern"></textarea>
+          <span class="catinfo">Dann kannst du beim Termin „Workout“ antippen und Gewicht und Wiederholungen eintragen.</span></div>
         <label class="check" for="f-locked" id="f-lockrow"><input type="checkbox" id="f-locked"> Festschreiben: nicht mehr automatisch verschieben</label>
         <p class="err" id="f-err" hidden></p>
         <div class="dfoot">
@@ -293,6 +307,7 @@
             <button type="button" class="btn danger" id="f-del" hidden>Löschen</button>
             <button type="button" class="btn danger" id="f-delone" hidden>Nur diesen Termin löschen</button>
             <button type="button" class="btn donebtn" id="f-done" hidden></button>
+            <button type="button" class="btn" id="f-workout" hidden>Workout</button>
           </div>
           <div class="right">
             <button type="button" class="btn" id="f-cancel">Abbrechen</button>
