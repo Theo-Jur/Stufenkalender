@@ -83,6 +83,7 @@
           <div class="minis" id="minis"></div>
         </div>
       </div>
+      <section class="quick daily-only" id="quick" hidden aria-labelledby="quick-h"></section>
       <section class="habits daily-only" id="habits" hidden aria-label="Gewohnheiten"></section>
 
 
@@ -191,7 +192,7 @@
         <div class="field"><label for="t-cat">Kategorie</label><select id="t-cat"></select><span class="catinfo" id="t-catinfo"></span></div>
         <div class="row2">
           <div class="field"><label for="t-dur">Wie lange ungefähr?</label>
-            <select id="t-dur"><option value="15">15 min</option><option value="30">30 min</option><option value="45">45 min</option><option value="60" selected>1 h</option><option value="90">1,5 h</option><option value="120">2 h</option><option value="180">3 h</option><option value="240">4 h</option></select></div>
+            <select id="t-dur"><option value="5">5 min</option><option value="10">10 min</option><option value="15">15 min</option><option value="30">30 min</option><option value="45">45 min</option><option value="60" selected>1 h</option><option value="90">1,5 h</option><option value="120">2 h</option><option value="180">3 h</option><option value="240">4 h</option></select></div>
           <div class="field"><label for="t-due">Bis wann? (optional)</label><input type="date" id="t-due"></div>
         </div>
         <p class="err" id="t-err" hidden></p>
@@ -218,7 +219,7 @@
           <li><b>Kalender importieren</b> (unter Einstellungen): Termine aus einer .ics-Datei, z. B. deinem Stundenplan. Sie bekommen eine Stufe wie alle anderen Termine.</li>
           <li><b>Wiederkehrend</b> (↻): Beim Anlegen anhaken. Verschiebst du einen Termin einer Serie, gilt das nur für dieses eine Mal.</li>
           <li><b>Neuer Termin</b>: Tipp auf eine freie Stelle im Kalender – Tag und Uhrzeit sind dann schon eingetragen. Oder nimm den Knopf „+ Termin“.</li>
-          <li><b>To-dos</b>: Aufgaben ohne feste Zeit kommen über „+ To-do“ in die Ablage „Zu erledigen“ – mit Dauer, Kategorie und optional „bis wann“. Zieh sie in den Kalender (grün = passt) oder tippe auf den Vorschlag, dann werden sie zum Termin. Mit ✓ hakst du sie direkt ab.</li>
+          <li><b>To-dos</b>: Aufgaben ohne feste Zeit kommen über „+ To-do“ in die Ablage „Zu erledigen“ – mit Dauer, Kategorie und optional „bis wann“. Zieh sie in den Kalender (grün = passt) oder tippe auf den Vorschlag, dann werden sie zum Termin. Mit ✓ hakst du sie direkt ab. Im Alltag-Modus siehst du kurze To-dos (unter 30 min) im Kasten „Kurz erledigen“ und kannst sie dort abhaken.</li>
           <li><b>Gewohnheiten</b>: Eine ganze Kategorie (z. B. Training) wird zur Gewohnheit: im Termin-Fenster unter der Kategorie „… als Gewohnheit verfolgen“ anhaken oder unter Einstellungen → Kategorien verwalten. Alle Termine dieser Kategorie zählen zusammen. Im Alltag-Modus siehst du dann deine Serie und kannst mit „Heute abhaken“ erledigen. Jeden Termin kannst du außerdem antippen und als erledigt markieren. Die Serie zählt nur Tage, an denen ein Termin dieser Kategorie geplant ist – Ruhetage brechen sie also nicht.</li>
           <li><b>Rückgängig</b>: Nach jeder Änderung erscheint unten kurz „Rückgängig“ (am Computer auch Strg+Z).</li>
           <li>Jeden Termin kannst du auch direkt im Kalender verschieben, indem du ihn ziehst. Tippen öffnet ihn zum Bearbeiten.</li>

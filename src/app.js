@@ -218,6 +218,20 @@ function renderTodos(){
         <button type="button" class="tdone" data-tododone="${t.id}" aria-label="${esc(t.title)} als erledigt abhaken" title="Erledigt">✓</button></div>
     </div>`;}).join('');
 }
+// Alltag: Kasten mit noch nicht eingeplanten To-dos – kurze (< 30 min) zum direkten Abhaken
+const QUICK_MAX=30;
+function renderQuick(){
+  const all=state.todos.slice().sort((a,b)=>(a.due??1e9)-(b.due??1e9)||a.dur-b.dur);
+  const box=$('quick'); box.hidden=!all.length; if(!all.length){box.innerHTML='';return;}
+  const short=all.filter(t=>t.dur<QUICK_MAX), long=all.length-short.length;
+  const due=t=>t.due==null?'':t.due<TODAY?' · <span class="over">überfällig</span>':t.due===TODAY?' · <b>heute fällig</b>':` · bis ${wd(t.due)} ${dtxt(t.due)}`;
+  box.innerHTML=`<h2 class="hhead" id="quick-h">Kurz erledigen${short.length?` <span class="todocount">${short.length}</span>`:''}</h2>
+    ${short.length?`<ul class="qlist">${short.map(t=>`<li class="k-${TC[catOf(t).tier]}">
+      <button type="button" class="qcheck" data-tododone="${t.id}" aria-label="${esc(t.title)} abhaken"></button>
+      <span class="qt">${esc(t.title)}</span><span class="qm">${durTxt(t.dur)}${due(t)}</span></li>`).join('')}</ul>`
+      :'<p class="qnone">Keine kurzen To-dos offen.</p>'}
+    ${long?`<p class="qmore">${long===1?'1 größeres To-do wartet':`${long} größere To-dos warten`} noch aufs Einplanen. <button type="button" class="linkbtn" data-mode="plan">Im Planen-Modus einplanen</button></p>`:''}`;
+}
 let editTodo=null;
 function openTodo(tid){
   if(!state.cats.length){openMgr(); return;}
@@ -547,7 +561,7 @@ function render(){
   flashIds=new Set();
   if(prevPlan) Object.keys(plan).forEach(id=>{const a=plan[id],b=prevPlan[id]; if(b&&!a.unplaced&&!b.unplaced&&(a.day!==b.day||a.start!==b.start)) flashIds.add(id);});
   prevPlan=plan;
-  renderFilters(); renderGrid(plan); renderLog(plan); renderNext(plan); renderSeg(); renderHabits(); renderTodos(); save(); trackUndo();
+  renderFilters(); renderGrid(plan); renderLog(plan); renderNext(plan); renderSeg(); renderHabits(); renderTodos(); renderQuick(); save(); trackUndo();
 }
 
 /* ---------- Filter-Interaktion ---------- */
