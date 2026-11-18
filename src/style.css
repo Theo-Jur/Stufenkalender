@@ -496,3 +496,5 @@ aside{position:sticky;top:12px}
 .ev .ck{display:inline-block;margin-right:3px;font-weight:700}
 .ev.done{opacity:.72}
 .ev.done .t{text-decoration:line-through;text-decoration-thickness:1.5px}
+.crow .chabit{grid-column:1 / -1;display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.crow .chabit input{width:auto}

@@ -28,14 +28,14 @@
 | `supabase/schema.sql` | Tabelle + Row Level Security + Realtime |
 
 ## Datenmodell (`state`, als ein JSON pro Konto gespeichert)
-- `cats`: `{id,name,tier}` · `places`: `{id,name}` · `home`: Orts-id · `travel`: `{"a|b": Minuten}` (Schlüssel sortiert, siehe `pkey`)
+- `cats`: `{id,name,tier,habit?}` – `habit: true` macht die ganze Kategorie zur Gewohnheit · `places`: `{id,name}` · `home`: Orts-id · `travel`: `{"a|b": Minuten}` (Schlüssel sortiert, siehe `pkey`)
 - `events`: `{id,title,cat,day,start,dur,loc,note,locked,rec,ex,uid}`
   - `day` = Tagesnummer ab Montag 9.11.2026 (`BASE`), kann negativ sein; `start`/`dur` in Minuten.
   - `rec` = `{freq:'daily'|'weekly'|'biweekly', days:[0-6]|null, until:Tagesnummer|null}`
   - `ex` = Ausnahmen einer Serie: `{[Tagesnummer]: 'skip' | {day,start}}`
   - `uid` nur bei importierten Terminen (erneuter Import aktualisiert statt zu verdoppeln).
   - `done` = erledigte Vorkommen `{[Tagesnummer des Vorkommens]: 1}` (optional, auch bei Einzelterminen). Nur Vorkommen bis heute lassen sich abhaken.
-  - `habit: true` = Serie wird als Gewohnheit verfolgt (Leiste „Gewohnheiten“ im Alltag-Modus, Serie/Rekord über `habitStats`). Die Serie zählt nur geplante Vorkommen; ein noch offenes Vorkommen von heute bricht sie nicht.
+  - Gewohnheiten gelten pro **Kategorie** (`cat.habit`), alle Termine der Kategorie zählen zusammen (Leiste „Gewohnheiten“ im Alltag-Modus, `habitStats(catId)`). Gezählt werden Tage mit mindestens einem geplanten Termin der Kategorie; ein Tag ist geschafft, wenn mindestens einer abgehakt ist. Ein noch offener Tag „heute“ bricht die Serie nicht. Früheres `event.habit` wird in `normalize` auf die Kategorie umgezogen (18.11.2026).
 - Angezeigt und geplant wird mit Einzelterminen der sichtbaren Woche (`buildEV`), ids `"<id>@<tag>"`; Änderungen an Einzelterminen über `setInst`.
 - Weitere Felder: `hidden` (Filter), `buffer`, `lockMode`, `sleep`, `nextId`.
 - **Wenn sich das Datenformat ändert:** alte gespeicherte Daten müssen weiter laden (`normalize` in `app.js` ergänzt fehlende Felder). Vorher Theo Bescheid sagen.

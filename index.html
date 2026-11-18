@@ -190,7 +190,7 @@
           <li><b>Kalender importieren</b> (unter Einstellungen): Termine aus einer .ics-Datei, z. B. deinem Stundenplan. Sie bekommen eine Stufe wie alle anderen Termine.</li>
           <li><b>Wiederkehrend</b> (↻): Beim Anlegen anhaken. Verschiebst du einen Termin einer Serie, gilt das nur für dieses eine Mal.</li>
           <li><b>Neuer Termin</b>: Tipp auf eine freie Stelle im Kalender – Tag und Uhrzeit sind dann schon eingetragen. Oder nimm den Knopf „+ Termin“.</li>
-          <li><b>Gewohnheiten</b>: Beim Anlegen eines wiederkehrenden Termins „Als Gewohnheit verfolgen“ anhaken. Im Alltag-Modus siehst du dann oben deine Serie und kannst mit „Heute abhaken“ erledigen. Jeden Termin kannst du außerdem antippen und als erledigt markieren. Die Serie zählt nur die Tage, an denen der Termin wirklich geplant ist – Ruhetage brechen sie also nicht.</li>
+          <li><b>Gewohnheiten</b>: Eine ganze Kategorie (z. B. Training) wird zur Gewohnheit: im Termin-Fenster unter der Kategorie „… als Gewohnheit verfolgen“ anhaken oder unter Einstellungen → Kategorien verwalten. Alle Termine dieser Kategorie zählen zusammen. Im Alltag-Modus siehst du dann deine Serie und kannst mit „Heute abhaken“ erledigen. Jeden Termin kannst du außerdem antippen und als erledigt markieren. Die Serie zählt nur Tage, an denen ein Termin dieser Kategorie geplant ist – Ruhetage brechen sie also nicht.</li>
           <li><b>Rückgängig</b>: Nach jeder Änderung erscheint unten kurz „Rückgängig“ (am Computer auch Strg+Z).</li>
           <li>Jeden Termin kannst du auch direkt im Kalender verschieben, indem du ihn ziehst. Tippen öffnet ihn zum Bearbeiten.</li>
           <li><b>Festgeschrieben</b> (Schloss) sind Termine kurz vor ihrem Beginn, vergangene Termine und alles, was du selbst festschreibst. Sie bewegen sich nicht mehr.</li>
@@ -217,7 +217,8 @@
         <h2 id="f-head">Neuer Termin</h2>
         <div class="field"><label for="f-title">Titel</label><input id="f-title" autocomplete="off" placeholder="z. B. Training, Klausur, Treffen mit Lea"></div>
         <div class="field"><label for="f-cat">Kategorie</label><select id="f-cat"></select>
-          <span class="catinfo" id="f-catinfo"></span></div>
+          <span class="catinfo" id="f-catinfo"></span>
+          <label class="check" for="f-habit"><input type="checkbox" id="f-habit"> <span id="f-habittxt">Als Gewohnheit verfolgen</span></label></div>
         <div class="field"><label for="f-loc">Ort</label><select id="f-loc"></select>
           <span class="catinfo" id="f-locinfo"></span></div>
         <div class="row2" id="f-newloc" hidden>
@@ -251,7 +252,6 @@
             <div class="field" id="f-wdrow"><span class="lbl" id="f-wdlbl">An diesen Tagen</span>
               <div class="wdpick" role="group" aria-labelledby="f-wdlbl" id="f-wd"></div></div>
             <span class="catinfo" id="f-recinfo"></span>
-            <label class="check" for="f-habit"><input type="checkbox" id="f-habit"> Als Gewohnheit verfolgen – abhaken und Serie zählen</label>
           </div>
         </div>
         <div class="field"><label for="f-note">Bemerkung</label>

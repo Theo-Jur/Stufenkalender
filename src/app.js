@@ -41,7 +41,12 @@ const pkey=(a,b)=>a<b?a+'|'+b:b+'|'+a;
 function fresh(){return {cats:clone(SEED_CATS),events:[],hidden:{},buffer:15,nextId:100,
   sleep:{mode:'split',wd:{wake:420,bed:1380},we:{wake:540,bed:30},days:null},
   places:[{id:'home',name:'Zuhause'}],home:'home',travel:{},lockMode:'eve'};}
-function normalize(s){return (s&&Array.isArray(s.events)&&Array.isArray(s.cats))?Object.assign(fresh(),clone(s)):fresh();}
+function normalize(s){
+  const st=(s&&Array.isArray(s.events)&&Array.isArray(s.cats))?Object.assign(fresh(),clone(s)):fresh();
+  // Früher hing „Gewohnheit“ an einzelnen Serien, jetzt an der Kategorie
+  st.events.forEach(e=>{ if(e.habit){const c=st.cats.find(x=>x.id===e.cat); if(c) c.habit=true;} delete e.habit; });
+  return st;
+}
 let state=normalize(initial);
 const placeName=id=>(state.places.find(p=>p.id===id)||{name:'?'}).name;
 function travel(a,b){if(!a||!b||a===b) return {min:0,est:false}; const v=state.travel[pkey(a,b)]; return v==null?{min:DEFAULT_TRAVEL,est:true}:{min:v,est:false};}
@@ -104,8 +109,8 @@ function buildEV(){
   return out;
 }
 /* ---------- Abhaken und Gewohnheiten ----------
-   event.done = {[Tagesnummer des Vorkommens]: 1}, event.habit = true (nur bei Serien).
-   Eine Serie zählt nur geplante Vorkommen – Tage ohne Termin unterbrechen sie nicht. */
+   event.done = {[Tagesnummer des Vorkommens]: 1}; cat.habit = true macht eine Kategorie zur Gewohnheit.
+   Die Serie zählt nur Tage mit geplantem Termin – Tage ohne Termin unterbrechen sie nicht. */
 const isDone=inst=>!!(inst&&inst.done&&inst.done[inst.occ]);
 function toggleDone(sid,occ){
   const s=state.events.find(x=>x.id===sid); if(!s) return;
@@ -114,7 +119,7 @@ function toggleDone(sid,occ){
   if(!Object.keys(s.done).length) delete s.done;
   render();
   if(was) toast(`${s.title}: nicht mehr erledigt.`);
-  else if(s.habit){const st=habitStats(s); toast(`${s.title} erledigt – ${st.streak} am Stück${st.streak>1&&st.streak>=st.best?' (Rekord!)':''}.`);}
+  else if((catOf(s)||{}).habit){const st=habitStats(s.cat); toast(`${s.title} erledigt – ${catOf(s).name}: ${st.streak} am Stück${st.streak>1&&st.streak>=st.best?' (Rekord!)':''}.`);}
   else toast(`${s.title} erledigt.`);
 }
 // Alle Vorkommen einer Serie bis heute, mit ihrem tatsächlichen Tag (verschobene berücksichtigt)
@@ -126,26 +131,41 @@ function pastOcc(e,limit=400){
   }
   return out.sort((a,b)=>a.day-b.day);
 }
-function habitStats(e){
-  const occ=pastOcc(e), done=e.done||{};
-  const today=occ.find(o=>o.day===TODAY)||null;
-  let list=occ; if(today&&!done[today.occ]) list=occ.filter(o=>o!==today); // heute zählt erst, wenn erledigt
-  let streak=0; for(let i=list.length-1;i>=0&&done[list[i].occ];i--) streak++;
-  let best=0,run=0; occ.forEach(o=>{ if(done[o.occ]){run++; best=Math.max(best,run);} else if(o!==today) run=0; });
-  const recent=occ.slice(-10).map(o=>({...o,state:done[o.occ]?'done':o===today?'today':'miss'}));
-  return {streak,best,today,recent,total:occ.filter(o=>done[o.occ]).length};
+// Serie einer Gewohnheits-Kategorie: zählt Tage, an denen mindestens ein Termin der Kategorie geplant ist.
+// Ein Tag gilt als geschafft, wenn mindestens ein Termin an dem Tag abgehakt ist.
+function habitStats(cid){
+  const byDay=new Map();
+  state.events.filter(e=>e.cat===cid).forEach(e=>pastOcc(e).forEach(o=>{
+    if(!byDay.has(o.day)) byDay.set(o.day,{day:o.day,items:[],done:false});
+    const d=byDay.get(o.day); const dn=!!(e.done&&e.done[o.occ]);
+    d.items.push({sid:e.id,occ:o.occ,start:(e.ex&&e.ex[o.occ]&&e.ex[o.occ].start)||e.start,done:dn}); if(dn) d.done=true;
+  }));
+  const days=[...byDay.values()].sort((a,b)=>a.day-b.day);
+  const today=byDay.get(TODAY)||null;
+  const list=today&&!today.done?days.filter(d=>d!==today):days; // heute zählt erst, wenn erledigt
+  let streak=0; for(let i=list.length-1;i>=0&&list[i].done;i--) streak++;
+  let best=0,run=0; days.forEach(d=>{ if(d.done){run++; best=Math.max(best,run);} else if(d!==today) run=0; });
+  const recent=days.slice(-10).map(d=>({day:d.day,state:d.done?'done':d===today?'today':'miss'}));
+  if(today) today.items.sort((a,b)=>a.start-b.start);
+  return {streak,best,today,recent};
+}
+// „Heute abhaken“: ersten Termin von heute abhaken; ist schon etwas erledigt, alles von heute zurücknehmen
+function toggleHabitToday(cid){
+  const st=habitStats(cid), c=state.cats.find(x=>x.id===cid); if(!st.today||!c) return;
+  if(st.today.done){ st.today.items.forEach(it=>{const s=state.events.find(x=>x.id===it.sid); if(s&&s.done){delete s.done[it.occ]; if(!Object.keys(s.done).length) delete s.done;}}); render(); toast(`${c.name}: heute nicht mehr erledigt.`); return; }
+  const it=st.today.items[0]; toggleDone(it.sid,it.occ);
 }
 const FLAME='<svg class="flame" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M12 2c1 3.5-1.5 5-1.5 7.5 0 1.4 1 2.5 2.3 2.5 1.6 0 2.4-1.3 2.2-3 2.3 1.8 3.5 4.3 3.5 6.6C18.5 19.3 15.6 22 12 22s-6.5-2.7-6.5-6.4C5.5 10.4 10.5 7.6 12 2z"/></svg>';
 function renderHabits(){
-  const hs=state.events.filter(e=>e.habit&&e.rec);
+  const hs=state.cats.filter(c=>c.habit);
   const box=$('habits'); box.hidden=!hs.length; if(!hs.length){box.innerHTML='';return;}
-  box.innerHTML='<h2 class="hhead">Gewohnheiten</h2><div class="hlist">'+hs.map(e=>{
-    const c=catOf(e), st=habitStats(e), dn=st.today&&e.done&&e.done[st.today.occ];
+  box.innerHTML='<h2 class="hhead">Gewohnheiten</h2><div class="hlist">'+hs.map(c=>{
+    const st=habitStats(c.id), dn=st.today&&st.today.done;
     const dots=st.recent.map(o=>`<span class="hd ${o.state}" title="${wd(o.day)} ${dtxt(o.day)}: ${o.state==='done'?'erledigt':o.state==='today'?'heute':'nicht erledigt'}"></span>`).join('');
-    const btn=st.today?`<button type="button" class="hbtn${dn?' on':''}" data-habit="${e.id}" data-occ="${st.today.occ}" aria-pressed="${!!dn}">${dn?'✓ Heute erledigt':'Heute abhaken'}</button>`:'<span class="hfree">Heute nicht geplant</span>';
+    const btn=st.today?`<button type="button" class="hbtn${dn?' on':''}" data-habitcat="${c.id}" aria-pressed="${!!dn}">${dn?'✓ Heute erledigt':'Heute abhaken'}</button>`:'<span class="hfree">Heute nicht geplant</span>';
     return `<div class="hcard k-${TC[c.tier]}">
-      <div class="htop"><span class="htitle">${esc(e.title)}</span><span class="hstreak${st.streak?'':' zero'}" title="Rekord: ${st.best}">${FLAME}${st.streak}</span></div>
-      <div class="hdots" aria-label="Letzte Termine">${dots||'<span class="hfree">Noch keine vergangenen Termine</span>'}</div>
+      <div class="htop"><span class="htitle">${esc(c.name)}</span><span class="hstreak${st.streak?'':' zero'}" title="Rekord: ${st.best}">${FLAME}${st.streak}</span></div>
+      <div class="hdots" aria-label="Letzte Tage mit ${esc(c.name)}">${dots||'<span class="hfree">Noch keine vergangenen Termine</span>'}</div>
       <div class="hfoot">${btn}<span class="hbest">Rekord ${st.best}</span></div></div>`;}).join('')+'</div>';
 }
 let EV=[];
@@ -534,7 +554,7 @@ document.addEventListener('click',ev=>{
   if(b=ev.target.closest('[data-seg]')){const t=+b.dataset.seg; if(t===0) state.hidden={}; else setOnly(state.cats.filter(c=>c.tier===t).map(c=>c.id)); render(); return;}
   if(b=ev.target.closest('[data-mini]')){const id=b.dataset.mini, c=state.cats.find(x=>x.id===id);
     if(isOnly([id])) setOnly(state.cats.filter(x=>x.tier===c.tier).map(x=>x.id)); else setOnly([id]); render(); return;}
-  if(b=ev.target.closest('[data-habit]')){toggleDone(+b.dataset.habit||b.dataset.habit,+b.dataset.occ); return;}
+  if(b=ev.target.closest('[data-habitcat]')){toggleHabitToday(b.dataset.habitcat); return;}
   if(justDragged) return;
   if(b=ev.target.closest('[data-accept]')){accept([b.dataset.accept]); return;}
   if(justDragged) return;
@@ -580,7 +600,8 @@ function fillCatSelect(sel){
   if(sel) $('f-cat').value=sel;
 }
 function syncCat(){const c=state.cats.find(x=>x.id===$('f-cat').value); if(!c) return; $('f-lockrow').hidden=c.tier===1;
-  $('f-catinfo').textContent=`Stufe ${c.tier} · ${TIERS[c.tier].name}: ${TIERS[c.tier].rule}`;}
+  $('f-catinfo').textContent=`Stufe ${c.tier} · ${TIERS[c.tier].name}: ${TIERS[c.tier].rule}`;
+  $('f-habit').checked=!!c.habit; $('f-habittxt').textContent=`„${c.name}“ als Gewohnheit verfolgen (alle Termine dieser Kategorie zählen zusammen)`;}
 $('f-cat').addEventListener('change',syncCat);
 function fillLocSelect(sel){
   $('f-loc').innerHTML='<option value="">Kein Ort</option>'+state.places.map(p=>`<option value="${p.id}">${esc(p.name)}${p.id===state.home?' (Zuhause)':''}</option>`).join('')+'<option value="__new">+ Neuer Ort …</option>';
@@ -604,7 +625,6 @@ function openForm(iid,preset){
   const defDay=preset?preset.day:VIEW===CURWEEK?TODAY:VIEW*7;
   $('f-day').value=isoDate(e?e.day:defDay); $('f-time').value=fmt(e?e.start:preset?preset.start:1080);
   $('f-rec').checked=!!(e&&e.rec); $('f-freq').value=e&&e.rec?e.rec.freq:'weekly';
-  $('f-habit').checked=!!(e&&e.habit);
   $('f-until').value=e&&e.rec&&e.rec.until!=null?isoDate(e.rec.until):'';
   recDays=e&&e.rec&&e.rec.days?e.rec.days.slice():[wdi(e?e.day:defDay)]; syncRec();
   setDur(e?e.dur:60);
@@ -660,7 +680,8 @@ $('form').addEventListener('submit',ev=>{
     if(freq!=='daily'&&!recDays.length) return fail('Wähle mindestens einen Wochentag.');
     rec={freq,days:freq==='daily'?null:recDays.slice().sort(),until};
   }
-  const data={title,cat,day,start,dur,loc,note,rec,habit:!!rec&&$('f-habit').checked,locked:c.tier!==1&&$('f-locked').checked};
+  const data={title,cat,day,start,dur,loc,note,rec,locked:c.tier!==1&&$('f-locked').checked};
+  if($('f-habit').checked) c.habit=true; else delete c.habit;
   if(editing){const i=state.events.findIndex(x=>x.id===editing); state.events[i]=Object.assign({},state.events[i],data,{id:editing}); if(!rec) delete state.events[i].ex;}
   else state.events.push(Object.assign({id:state.nextId++},data));
   delete state.hidden[cat];
@@ -674,7 +695,7 @@ let draft=[];
 function openMgr(){draft=clone(state.cats); renderMgr(); $('c-err').hidden=true; $('ov-cat').hidden=false;}
 function readMgr(){
   draft.forEach(c=>{const r=document.querySelector(`.crow[data-cid="${c.id}"]`); if(!r) return;
-    c.name=r.querySelector('.c-name').value; c.tier=+r.querySelector('.c-tier').value;
+    c.name=r.querySelector('.c-name').value; c.tier=+r.querySelector('.c-tier').value; c.habit=r.querySelector('.c-habit').checked;
     });
 }
 function renderMgr(){
@@ -685,6 +706,7 @@ function renderMgr(){
       <select class="c-tier" id="ct-${c.id}" aria-label="Stufe" ${c.del?'disabled':''}>
         ${[1,2,3].map(t=>`<option value="${t}" ${c.tier===t?'selected':''}>Stufe ${t} · ${TIERS[t].name}</option>`).join('')}</select>
       <button type="button" class="iconbtn" data-cdel="${c.id}">${c.del?'Wiederherstellen':'Löschen'}</button>
+      <label class="chabit"><input type="checkbox" class="c-habit" ${c.habit?'checked':''} ${c.del?'disabled':''}> Als Gewohnheit verfolgen</label>
 
       ${c.del&&counts[c.id]?`<div class="delnote">${counts[c.id]} Termin${counts[c.id]>1?'e werden':' wird'} beim Speichern mitgelöscht.</div>`:''}
     </div>`).join('') || '<p class="empty">Noch keine Kategorien.</p>';
@@ -704,7 +726,7 @@ $('cform').addEventListener('submit',ev=>{
   const gone=draft.filter(c=>c.del).map(c=>c.id);
   state.events=state.events.filter(e=>!gone.includes(e.cat));
   gone.forEach(id=>delete state.hidden[id]);
-  state.cats=keep.map(c=>({id:c.id,name:c.name.trim(),tier:c.tier,color:c.color}));
+  state.cats=keep.map(c=>Object.assign({id:c.id,name:c.name.trim(),tier:c.tier,color:c.color},c.habit?{habit:true}:{}));
   $('ov-cat').hidden=true; render(); showNewProps(before,'die geänderten Kategorien');
 });
 $('mgr').onclick=openMgr;
@@ -762,7 +784,7 @@ function openDetail(id){
   if(tr&&tr.min) rows.push(['Los',`${fmt(tr.leave)} ab ${placeName(tr.from)} (${tr.est?'ca. ':''}${tr.min} min)`]);
   $('dt-list').innerHTML=rows.map(([k,v])=>`<dt>${k}</dt><dd>${esc(v)}</dd>`).join('');
   $('dt-note').hidden=!e.note; $('dt-note').textContent=e.note||'';
-  if(e.habit&&e.rec){const st=habitStats(state.events.find(x=>x.id===e.sid)); $('dt-list').insertAdjacentHTML('beforeend',`<dt>Serie</dt><dd>${st.streak} am Stück · Rekord ${st.best}</dd>`);}
+  if(c.habit){const st=habitStats(c.id); $('dt-list').insertAdjacentHTML('beforeend',`<dt>Serie</dt><dd>${esc(c.name)}: ${st.streak} am Stück · Rekord ${st.best}</dd>`);}
   const canDone=p.day<=TODAY; $('dt-done').hidden=!canDone; detailId=id;
   if(canDone){const d=isDone(e); $('dt-done').textContent=d?'✓ Erledigt – zurücknehmen':'Als erledigt markieren'; $('dt-done').classList.toggle('on',d);}
   $('ov-detail').hidden=false; setTimeout(()=>$('dt-close').focus(),0);
