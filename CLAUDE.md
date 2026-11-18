@@ -10,7 +10,7 @@
 - Der Planer verschiebt **nie selbst**. Verdrängte Termine landen in der Ablage „Neu einplanen“; Theo zieht sie per Drag & Drop in den Kalender (grüne Bereiche passen) oder übernimmt den Vorschlag.
 - Festschreiben (ab Vorabend 20 Uhr, einstellbar oder pro Termin), nichts in die Vergangenheit, Schlafzeiten sind tabu für Stufe 2/3, Wegzeiten zwischen Orten (vom Ort des vorherigen Termins, sonst Zuhause).
 - Zwei Modi: **Planen** (alles bearbeitbar) und **Alltag** (nur ansehen, kleine Stufen-Filter, „Jetzt/Als Nächstes“, Termin antippen zeigt Details).
-- Weitere Funktionen: einfacher Workout-Tracker (Übungen, Sätze, kg, Wdh., letztes Mal), To-dos (Ablage „Zu erledigen“), Abhaken und Gewohnheiten mit Serien (Streaks), wiederkehrende Termine (täglich/wöchentlich/2-wöchentlich, Wochentage, Enddatum), Bemerkungen, beliebige Dauer, Wochen blättern, .ics-Import, Orte & Wege, Kategorien verwalten.
+- Weitere Funktionen: einfache Tracker für Krafttraining (Sätze/Wdh./Gewicht) und Laufen (km/Zeit), je mit „letztes Mal“, To-dos (Ablage „Zu erledigen“), Abhaken und Gewohnheiten mit Serien (Streaks), wiederkehrende Termine (täglich/wöchentlich/2-wöchentlich, Wochentage, Enddatum), Bemerkungen, beliebige Dauer, Wochen blättern, .ics-Import, Orte & Wege, Kategorien verwalten.
 
 ## Technik
 - Vite + reines JavaScript (kein Framework), PWA über `vite-plugin-pwa`, Supabase für Login (E-Mail + Passwort) und Speicherung. Hosting: Vercel, verbunden mit GitHub.
@@ -29,20 +29,23 @@
 
 ## Datenmodell (`state`, als ein JSON pro Konto gespeichert)
 - `cats`: `{id,name,tier,habit?}` – `habit: true` macht die ganze Kategorie zur Gewohnheit · `places`: `{id,name}` · `home`: Orts-id · `travel`: `{"a|b": Minuten}` (Schlüssel sortiert, siehe `pkey`)
-- `events`: `{id,title,cat,day,start,dur,loc,note,locked,rec,ex,uid,done?,exercises?,wlog?,fromTodo?,due?}`
+- `events`: `{id,title,cat,day,start,dur,loc,note,locked,rec,ex,uid,done?,track?,exercises?,wlog?,rlog?,fromTodo?,due?}`
   - `day` = Tagesnummer ab Montag 9.11.2026 (`BASE`), kann negativ sein; `start`/`dur` in Minuten.
   - `rec` = `{freq:'daily'|'weekly'|'biweekly', days:[0-6]|null, until:Tagesnummer|null}`
   - `ex` = Ausnahmen einer Serie: `{[Tagesnummer]: 'skip' | {day,start}}`
   - `uid` nur bei importierten Terminen (erneuter Import aktualisiert statt zu verdoppeln).
   - `done` = erledigte Vorkommen `{[Tagesnummer des Vorkommens]: 1}` (optional, auch bei Einzelterminen). Nur Vorkommen bis heute lassen sich abhaken.
   - Gewohnheiten gelten pro **Kategorie** (`cat.habit`), alle Termine der Kategorie zählen zusammen (Leiste „Gewohnheiten“ im Alltag-Modus, `habitStats(catId)`). Gezählt werden Tage mit mindestens einem geplanten Termin der Kategorie; ein Tag ist geschafft, wenn mindestens einer abgehakt ist. Ein noch offener Tag „heute“ bricht die Serie nicht. Früheres `event.habit` wird in `normalize` auf die Kategorie umgezogen (18.11.2026).
-  - `exercises` = Übungsnamen fürs Workout (Plan der Serie, im Termin-Fenster eine pro Zeile). `wlog` = `{[Vorkommen]: {[Übung]: [{kg,reps}, …]}}`. Workout-Fenster (`openWorkout`) zeigt je Übung „Letztes Mal“ (`lastSets`: jüngster Eintrag dieser Übung, egal welche Serie) und füllt die Sätze damit vor; Speichern hakt den Termin ab. Theo will es bewusst **sehr simpel**: nur Übungsname, Sätze, kg, Wiederholungen, Vergleich mit letztem Mal (18.11.2026).
+  - `track` = `'gym'` (Krafttraining) | `'run'` (Laufen) | fehlt (normaler Termin) – im Termin-Fenster „Art des Termins“. Nur sichtbar/aktiv, wenn der Tracker unter Einstellungen an ist (`state.trackers = {gym, run}`, Standard beide an).
+  - Krafttraining: `exercises` = Übungsnamen (eine pro Zeile, nur bei `track:'gym'`), `wlog` = `{[Vorkommen]: {[Übung]: {sets, reps, kg}}}` – pro Übung nur eine Zeile mit festen Feldern Sätze/Wdh./Gewicht (Theos Wunsch). Ältere Einträge als Satz-Liste werden in `normalize` umgerechnet.
+  - Laufen: `rlog` = `{[Vorkommen]: {km, sec}}`, Tempo wird angezeigt (min/km). Zeit-Eingabe `mm:ss`, `h:mm:ss` oder nur Minuten (`parseRunTime`).
+  - Workout-/Lauf-Fenster (`openWorkout`) zeigt „Letztes Mal“ (`lastSets`/`lastRun`, jüngster Eintrag davor, egal welche Serie) und füllt damit vor; Speichern hakt den Termin ab. Bewusst **sehr simpel** halten (18.11.2026).
 - `todos`: `[{id,title,cat,dur,due}]` – Aufgaben ohne feste Zeit (Ablage „Zu erledigen“ im Planen-Modus, `due` = Tagesnummer oder null). Ziehen in den Kalender oder Vorschlag übernehmen macht daraus einen normalen Termin mit `fromTodo: true, due` (`scheduleTodo`). ✓ entfernt das To-do. Im Alltag-Modus zeigt der Kasten „Kurz erledigen“ (`renderQuick`) nicht eingeplante To-dos unter 30 min (`QUICK_MAX`) zum Abhaken plus Hinweis auf größere. Vorschläge (`todoSuggest`) suchen nur in der angezeigten Woche eine wirklich freie Lücke vor der Frist und überschneiden sich nicht gegenseitig.
 - Angezeigt und geplant wird mit Einzelterminen der sichtbaren Woche (`buildEV`), ids `"<id>@<tag>"`; Änderungen an Einzelterminen über `setInst`.
 - Handy (≤ 700 px) im **Alltag**-Modus: immer drei Tage ab `DAY0` (`threeDay()`, `win3()`, `showDay(d)`), Pfeile/Wischen blättern um 3 Tage, auch über Wochengrenzen. Der Plan wird dafür pro beteiligter Woche berechnet (`planWeek`) und zusammengeführt – der Planer bleibt wochenweise. To-do-Vorschläge nur in den angezeigten Tagen.
 - Handy im **Planen**-Modus: ganze Woche, seitlich scrollbar (Theos Wunsch, 18.11.2026). Da `.cal` dort ein Scroll-Container ist, wird die Tageszeile per JS (`stickHead`, CSS-Variable `--dhs`) oben gehalten. Wischen blättert erst am Rand die Woche.
 - **Kein Fenster-im-Fenster:** Der Kalender (`.cal`, `overflow:clip`) hat kein eigenes Scrollen, nur die Seite scrollt; die Tageszeile (`.dh`) klebt oben. Theo findet inneres Scrollen beim Navigieren nervig (18.11.2026) – nicht wieder einführen (einzige Ausnahme: seitliches Scrollen am Handy im Planen-Modus).
-- Weitere Felder: `hidden` (Filter), `buffer`, `lockMode`, `sleep`, `nextId`.
+- Weitere Felder: `hidden` (Filter), `buffer`, `lockMode`, `sleep`, `nextId`, `trackers`.
 - **Wenn sich das Datenformat ändert:** alte gespeicherte Daten müssen weiter laden (`normalize` in `app.js` ergänzt fehlende Felder). Vorher Theo Bescheid sagen.
 
 ## Testen

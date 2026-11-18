@@ -44,12 +44,19 @@ const DEFAULT_TRAVEL=30;
 const pkey=(a,b)=>a<b?a+'|'+b:b+'|'+a;
 function fresh(){return {cats:clone(SEED_CATS),events:[],hidden:{},buffer:15,nextId:100,
   sleep:{mode:'split',wd:{wake:420,bed:1380},we:{wake:540,bed:30},days:null},
-  places:[{id:'home',name:'Zuhause'}],home:'home',travel:{},lockMode:'eve',todos:[]};}
+  places:[{id:'home',name:'Zuhause'}],home:'home',travel:{},lockMode:'eve',todos:[],trackers:{gym:true,run:true}};}
 function normalize(s){
   const st=(s&&Array.isArray(s.events)&&Array.isArray(s.cats))?Object.assign(fresh(),clone(s)):fresh();
   // Früher hing „Gewohnheit“ an einzelnen Serien, jetzt an der Kategorie
   st.events.forEach(e=>{ if(e.habit){const c=st.cats.find(x=>x.id===e.cat); if(c) c.habit=true;} delete e.habit; });
   if(!Array.isArray(st.todos)) st.todos=[];
+  if(!st.trackers) st.trackers={gym:true,run:true};
+  st.events.forEach(e=>{
+    if(e.exercises&&!e.track) e.track='gym';
+    // frühere Workout-Einträge (Liste einzelner Sätze) in Sätze/Wdh./Gewicht umrechnen
+    if(e.wlog) Object.values(e.wlog).forEach(log=>Object.keys(log).forEach(k=>{ const v=log[k]; if(Array.isArray(v)){
+      const f=v.find(x=>x.kg!==''||x.reps!=='')||{}; log[k]={sets:v.length,reps:f.reps??'',kg:f.kg??''}; } }));
+  });
   return st;
 }
 let state=normalize(initial);
@@ -250,60 +257,88 @@ function openTodo(tid){
   $('ov-todo').hidden=false; setTimeout(()=>$('t-title').focus(),0);
 }
 function syncTodoCat(){const c=state.cats.find(x=>x.id===$('t-cat').value); if(c) $('t-catinfo').textContent=`Stufe ${c.tier} · ${TIERS[c.tier].name}: ${TIERS[c.tier].rule}`;}
-/* ---------- Workout ----------
-   event.exercises = ['Kniebeugen', …] (Plan der Serie), event.wlog = {[Vorkommen]: {[Übung]: [{kg,reps}, …]}}.
-   „Letztes Mal“ = jüngster Eintrag dieser Übung (egal aus welcher Serie) vor dem aktuellen Tag. */
+/* ---------- Tracker: Krafttraining und Laufen ----------
+   event.track = 'gym' | 'run' (Art des Termins), an/aus über state.trackers {gym,run}.
+   Krafttraining: event.exercises = ['Kniebeugen', …], event.wlog = {[Vorkommen]: {[Übung]: {sets,reps,kg}}}.
+   Laufen: event.rlog = {[Vorkommen]: {km, sec}}. „Letztes Mal“ = jüngster Eintrag davor (egal welche Serie). */
 const numTxt=n=>String(n).replace('.',',');
+const trackOn=e=>!!(e&&e.track&&state.trackers&&state.trackers[e.track]);
+const occDay=(e,occ)=>(e.ex&&e.ex[occ]&&e.ex[occ].day)??occ;
 function lastSets(name,beforeDay){
   const key=name.toLowerCase(); let best=null;
   state.events.forEach(e=>{ if(!e.wlog) return;
-    Object.entries(e.wlog).forEach(([occ,log])=>{ occ=+occ; if(occ>=beforeDay) return;
-      const k=Object.keys(log).find(x=>x.toLowerCase()===key); if(!k||!log[k].length) return;
-      const day=(e.ex&&e.ex[occ]&&e.ex[occ].day)??occ;
-      if(!best||day>best.day) best={day,sets:log[k]}; }); });
+    Object.entries(e.wlog).forEach(([occ,log])=>{ occ=+occ; const day=occDay(e,occ); if(day>=beforeDay) return;
+      const k=Object.keys(log).find(x=>x.toLowerCase()===key); if(!k) return;
+      if(!best||day>best.day) best={day,...log[k]}; }); });
   return best;
 }
+function lastRun(beforeDay){
+  let best=null;
+  state.events.forEach(e=>{ if(!e.rlog) return;
+    Object.entries(e.rlog).forEach(([occ,r])=>{ const day=occDay(e,+occ); if(day>=beforeDay) return; if(!best||day>best.day) best={day,...r}; }); });
+  return best;
+}
+const fmtDur=sec=>{sec=Math.round(sec); const h=Math.floor(sec/3600), m=Math.floor(sec%3600/60), x=sec%60; return (h?h+':'+String(m).padStart(2,'0'):m)+':'+String(x).padStart(2,'0');};
+function parseRunTime(t){ t=(t||'').trim().replace(',','.'); if(!t) return null;
+  if(/^\d+(\.\d+)?$/.test(t)) return Math.round(parseFloat(t)*60); // nur Minuten
+  const p=t.split(':').map(Number); if(p.some(isNaN)) return null;
+  if(p.length===2) return p[0]*60+p[1]; if(p.length===3) return p[0]*3600+p[1]*60+p[2]; return null; }
+const paceTxt=(km,sec)=>km>0&&sec>0?fmtDur(sec/km)+' min/km':'';
+const gymTxt=v=>`${v.sets||'–'} × ${v.reps||'–'}${v.kg!==''&&v.kg!=null?' · '+numTxt(v.kg)+' kg':''}`;
 let wInst=null;
 function openWorkout(inst){
-  const s=state.events.find(x=>x.id===inst.sid); if(!s||!s.exercises) return; wInst=inst;
-  const cur=(s.wlog&&s.wlog[inst.occ])||{};
-  $('w-head').textContent=`Workout: ${s.title}`;
+  const s=state.events.find(x=>x.id===inst.sid); if(!s||!trackOn(s)) return; wInst=inst;
+  const run=s.track==='run';
+  $('w-head').textContent=run?`Lauf: ${s.title}`:`Workout: ${s.title}`;
   $('w-sub').textContent=`${wdl(inst.day)}, ${dtxt(inst.day)}`;
-  $('w-list').innerHTML=s.exercises.map((name,i)=>{
-    const last=lastSets(name,inst.occ), mine=cur[name];
-    const rows=(mine||(last&&last.sets)||[{kg:'',reps:''},{kg:'',reps:''},{kg:'',reps:''}]);
-    const lastTxt=last?`Letztes Mal (${wd(last.day)} ${dtxt(last.day)}): `+last.sets.map(x=>`${x.kg!==''&&x.kg!=null?numTxt(x.kg)+' kg':'–'} × ${x.reps||'–'}`).join(' · '):'Noch kein früherer Eintrag.';
+  $('w-list').hidden=run; $('w-run').hidden=!run; $('r-err').hidden=true;
+  if(run){
+    const cur=s.rlog&&s.rlog[inst.occ], last=lastRun(inst.day);
+    $('r-last').textContent=last?`Letztes Mal (${wd(last.day)} ${dtxt(last.day)}): ${numTxt(last.km)} km in ${fmtDur(last.sec)} min · ${paceTxt(last.km,last.sec)}`:'Noch kein früherer Lauf.';
+    $('r-km').value=cur?numTxt(cur.km):''; $('r-time').value=cur?fmtDur(cur.sec):'';
+    syncPace(); $('ov-workout').hidden=false; setTimeout(()=>$('r-km').focus(),0); return;
+  }
+  const cur=(s.wlog&&s.wlog[inst.occ])||{};
+  $('w-list').innerHTML=(s.exercises||[]).map((name,i)=>{
+    const last=lastSets(name,inst.day), v=cur[name]||last||{sets:'',reps:'',kg:''};
+    const lastTxt=last?`Letztes Mal (${wd(last.day)} ${dtxt(last.day)}): ${gymTxt(last)}`:'Noch kein früherer Eintrag.';
+    const kg=v.kg!==''&&v.kg!=null?numTxt(v.kg):'';
     return `<div class="wex" data-ex="${i}"><div class="wname">${esc(name)}</div><div class="wlast">${lastTxt}</div>
-      <div class="wsets">${rows.map((r,j)=>wRow(i,j,r)).join('')}</div>
-      <div class="wbtns"><button type="button" class="linkbtn" data-wadd="${i}">+ Satz</button><button type="button" class="linkbtn" data-wdel="${i}">– Satz</button></div></div>`;}).join('');
+      <div class="wline">
+        <label class="wf"><span>Sätze</span><input class="wsets" inputmode="numeric" value="${v.sets??''}" placeholder="0"></label>
+        <label class="wf"><span>Wdh.</span><input class="wreps" inputmode="numeric" value="${v.reps??''}" placeholder="0"></label>
+        <label class="wf"><span>Gewicht</span><input class="wkg" inputmode="decimal" value="${kg}" placeholder="0"><em>kg</em></label>
+      </div></div>`;}).join('')||'<p class="qnone">Trag im Termin unter „Übungen“ deine Übungen ein.</p>';
   $('ov-workout').hidden=false;
 }
-function wRow(i,j,r){return `<div class="wrow"><span class="wn">${j+1}.</span>
-  <label><input class="wkg" inputmode="decimal" value="${r.kg!==''&&r.kg!=null?numTxt(r.kg):''}" aria-label="Satz ${j+1} Gewicht in kg"> kg</label>
-  <span class="wx">×</span>
-  <label><input class="wreps" inputmode="numeric" value="${r.reps||''}" aria-label="Satz ${j+1} Wiederholungen"> Wdh.</label></div>`;}
-$('w-list').addEventListener('click',ev=>{
-  const a=ev.target.closest('[data-wadd]'), d=ev.target.closest('[data-wdel]'); if(!a&&!d) return;
-  const box=ev.target.closest('.wex').querySelector('.wsets'), rows=box.querySelectorAll('.wrow');
-  if(a){const prev=rows[rows.length-1]; const r=prev?{kg:prev.querySelector('.wkg').value.replace(',','.'),reps:prev.querySelector('.wreps').value}:{kg:'',reps:''};
-    box.insertAdjacentHTML('beforeend',wRow(+a.dataset.wadd,rows.length,r));}
-  else if(rows.length>1) rows[rows.length-1].remove();
-});
+function syncPace(){$('r-err').hidden=true; const km=parseFloat($('r-km').value.replace(',','.')), sec=parseRunTime($('r-time').value); $('r-pace').textContent=paceTxt(km,sec)?'Tempo: '+paceTxt(km,sec):'';}
+$('r-km').addEventListener('input',syncPace); $('r-time').addEventListener('input',syncPace);
 $('w-cancel').onclick=()=>{$('ov-workout').hidden=true;};
 $('wform').addEventListener('submit',ev=>{
   ev.preventDefault(); const inst=wInst; const s=inst&&state.events.find(x=>x.id===inst.sid); if(!s) return;
-  const log={};
-  s.exercises.forEach((name,i)=>{
-    const sets=[...document.querySelectorAll(`.wex[data-ex="${i}"] .wrow`)].map(r=>{
-      const kg=parseFloat(r.querySelector('.wkg').value.replace(',','.')), reps=parseInt(r.querySelector('.wreps').value,10);
-      return {kg:isNaN(kg)?'':kg, reps:isNaN(reps)?'':reps};}).filter(x=>x.kg!==''||x.reps!=='');
-    if(sets.length) log[name]=sets;
-  });
-  s.wlog=s.wlog||{}; if(Object.keys(log).length) s.wlog[inst.occ]=log; else delete s.wlog[inst.occ];
-  if(!Object.keys(s.wlog).length) delete s.wlog;
-  if(Object.keys(log).length){ s.done=s.done||{}; s.done[inst.occ]=1; }
-  $('ov-workout').hidden=true; render(); toast(`Workout gespeichert${Object.keys(log).length?' – Termin abgehakt':''}.`);
+  let saved=false;
+  if(s.track==='run'){
+    const kmT=$('r-km').value.trim(), tT=$('r-time').value.trim();
+    const km=parseFloat(kmT.replace(',','.')), sec=parseRunTime(tT);
+    if((kmT&&!(km>0))||(tT&&!(sec>0))){$('r-err').textContent='Gib die Distanz als Zahl (z. B. 5,2) und die Zeit als mm:ss (z. B. 28:30) ein.'; $('r-err').hidden=false; return;}
+    s.rlog=s.rlog||{};
+    if(km>0||sec>0){ s.rlog[inst.occ]={km:km>0?km:0,sec:sec>0?sec:0}; saved=true; } else delete s.rlog[inst.occ];
+    if(!Object.keys(s.rlog).length) delete s.rlog;
+  } else {
+    const log={};
+    (s.exercises||[]).forEach((name,i)=>{ const box=document.querySelector(`.wex[data-ex="${i}"]`); if(!box) return;
+      const n=x=>{const v=parseFloat(box.querySelector(x).value.replace(',','.')); return isNaN(v)?'':v;};
+      const v={sets:n('.wsets'),reps:n('.wreps'),kg:n('.wkg')}; if(v.sets!==''||v.reps!==''||v.kg!=='') log[name]=v; });
+    s.wlog=s.wlog||{}; if(Object.keys(log).length){ s.wlog[inst.occ]=log; saved=true; } else delete s.wlog[inst.occ];
+    if(!Object.keys(s.wlog).length) delete s.wlog;
+  }
+  if(saved){ s.done=s.done||{}; s.done[inst.occ]=1; }
+  $('ov-workout').hidden=true; render(); toast(`${s.track==='run'?'Lauf':'Workout'} gespeichert${saved?' – Termin abgehakt':''}.`);
 });
+function trackSummary(e){
+  if(e.track==='run'){const r=e.rlog&&e.rlog[e.occ]; return r?`${numTxt(r.km)} km in ${fmtDur(r.sec)} min${paceTxt(r.km,r.sec)?' · '+paceTxt(r.km,r.sec):''}`:'';}
+  const lg=e.wlog&&e.wlog[e.occ]; return lg?Object.entries(lg).map(([n,v])=>`${esc(n)}: ${gymTxt(v)}`).join('<br>'):'';
+}
 let EV=[];
 const seriesOf=iid=>state.events.find(x=>x.id===(EV.find(i=>i.id===iid)||{}).sid);
 // Einen einzelnen Termin verschieben: bei Serien nur dieses eine Mal (Ausnahme)
@@ -747,7 +782,7 @@ $('tform').addEventListener('submit',ev=>{
   delete state.hidden[cat];
   $('ov-todo').hidden=true; render();
 });
-$('setbtn').onclick=()=>{$('ov-settings').hidden=false; setTimeout(()=>$('set-close').focus(),0);};
+$('setbtn').onclick=()=>{syncTrackers(); $('ov-settings').hidden=false; setTimeout(()=>$('set-close').focus(),0);};
 $('set-close').onclick=()=>{$('ov-settings').hidden=true; $('setbtn').focus();};
 // Ein Unterpunkt öffnet sein eigenes Fenster und schließt die Einstellungen
 ['mgr','sleepbtn','placebtn','impbtn'].forEach(id=>$(id).addEventListener('click',()=>{$('ov-settings').hidden=true;},true));
@@ -806,10 +841,10 @@ function openForm(iid,preset){
   recDays=e&&e.rec&&e.rec.days?e.rec.days.slice():[wdi(e?e.day:defDay)]; syncRec();
   setDur(e?e.dur:60);
   fillLocSelect(e?e.loc:''); $('f-newname').value=''; $('f-newmin').value=20; $('f-locked').checked=!!(e&&e.locked); $('f-note').value=e&&e.note?e.note:'';
-  $('f-ex').value=e&&e.exercises?e.exercises.join('\n'):'';
+  $('f-ex').value=e&&e.exercises?e.exercises.join('\n'):''; $('f-track').value=e&&e.track?e.track:''; syncTrack();
   $('f-del').hidden=!e; $('f-del').textContent=e&&e.rec?'Ganze Serie löschen':'Löschen';
   $('f-delone').hidden=!(e&&e.rec);
-  $('f-workout').hidden=!(inst&&inst.exercises&&inst.exercises.length&&inst.day<=TODAY);
+  $('f-workout').hidden=!(inst&&trackOn(inst)&&inst.day<=TODAY); $('f-workout').textContent=inst&&inst.track==='run'?'Lauf eintragen':'Workout';
   { const show=!!inst&&inst.day<=TODAY; $('f-done').hidden=!show;
     if(show) $('f-done').textContent=isDone(inst)?'✓ Erledigt – zurücknehmen':'Als erledigt markieren'; }
   $('f-err').hidden=true; syncCat(); syncLoc();
@@ -859,8 +894,10 @@ $('form').addEventListener('submit',ev=>{
     if(freq!=='daily'&&!recDays.length) return fail('Wähle mindestens einen Wochentag.');
     rec={freq,days:freq==='daily'?null:recDays.slice().sort(),until};
   }
-  const exercises=$('f-ex').value.split('\n').map(x=>x.trim()).filter(Boolean).slice(0,30);
-  const data={title,cat,day,start,dur,loc,note,rec,exercises:exercises.length?exercises:undefined,locked:c.tier!==1&&$('f-locked').checked};
+  const data={title,cat,day,start,dur,loc,note,rec,locked:c.tier!==1&&$('f-locked').checked};
+  if(!$('f-trackrow').hidden){ const tr=$('f-track').value; data.track=tr||undefined;
+    const exercises=$('f-ex').value.split('\n').map(x=>x.trim()).filter(Boolean).slice(0,30);
+    data.exercises=tr==='gym'&&exercises.length?exercises:undefined; }
   if($('f-habit').checked) c.habit=true; else delete c.habit;
   if(editing){const i=state.events.findIndex(x=>x.id===editing); state.events[i]=Object.assign({},state.events[i],data,{id:editing}); if(!rec) delete state.events[i].ex;}
   else state.events.push(Object.assign({id:state.nextId++},data));
@@ -966,13 +1003,23 @@ function openDetail(id){
   $('dt-note').hidden=!e.note; $('dt-note').textContent=e.note||'';
   if(c.habit){const st=habitStats(c.id); $('dt-list').insertAdjacentHTML('beforeend',`<dt>Serie</dt><dd>${esc(c.name)}: ${st.streak} am Stück · Rekord ${st.best}</dd>`);}
   const canDone=p.day<=TODAY; $('dt-done').hidden=!canDone; detailId=id;
-  $('dt-workout').hidden=!(e.exercises&&e.exercises.length&&p.day<=TODAY);
-  { const lg=e.wlog&&e.wlog[e.occ]; if(lg) $('dt-list').insertAdjacentHTML('beforeend',`<dt>Workout</dt><dd>${Object.entries(lg).map(([n,ss])=>`${esc(n)}: ${ss.map(x=>`${x.kg!==''?numTxt(x.kg)+' kg':'–'}×${x.reps||'–'}`).join(', ')}`).join('<br>')}</dd>`); }
+  $('dt-workout').hidden=!(trackOn(e)&&p.day<=TODAY); $('dt-workout').textContent=e.track==='run'?'Lauf eintragen':'Workout';
+  if(trackOn(e)){ const sm=trackSummary(e); if(sm) $('dt-list').insertAdjacentHTML('beforeend',`<dt>${e.track==='run'?'Lauf':'Workout'}</dt><dd>${sm}</dd>`); }
   if(canDone){const d=isDone(e); $('dt-done').textContent=d?'✓ Erledigt – zurücknehmen':'Als erledigt markieren'; $('dt-done').classList.toggle('on',d);}
   $('ov-detail').hidden=false; setTimeout(()=>$('dt-close').focus(),0);
 }
 $('dt-close').onclick=()=>{$('ov-detail').hidden=true;};
 let detailId=null;
+function syncTrack(){
+  const tr=state.trackers||{}, any=tr.gym||tr.run, cur=$('f-track').value;
+  $('f-trackrow').hidden=!any&&!cur;
+  [...$('f-track').options].forEach(o=>{ if(o.value) o.hidden=!tr[o.value]&&o.value!==cur; });
+  $('f-exrow').hidden=cur!=='gym';
+  $('f-trackinfo').textContent=cur==='gym'?'Beim Termin kannst du dann „Workout“ antippen und Sätze, Wdh. und Gewicht eintragen.':cur==='run'?'Beim Termin kannst du dann „Lauf eintragen“ antippen und km und Zeit eintragen.':'';
+}
+$('f-track').addEventListener('change',syncTrack);
+function syncTrackers(){ $('tr-gym').checked=!!state.trackers.gym; $('tr-run').checked=!!state.trackers.run; }
+['gym','run'].forEach(k=>$('tr-'+k).addEventListener('change',()=>{ state.trackers=Object.assign({},state.trackers,{[k]:$('tr-'+k).checked}); render(); }));
 $('dt-workout').onclick=()=>{const e=EV.find(x=>x.id===detailId); if(!e) return; $('ov-detail').hidden=true; openWorkout(e);};
 $('f-workout').onclick=()=>{const inst=editingInst; if(!inst) return; closeForm(); openWorkout(inst);};
 $('dt-done').onclick=()=>{const e=EV.find(x=>x.id===detailId); if(!e) return; $('ov-detail').hidden=true; toggleDone(e.sid,e.occ);};
