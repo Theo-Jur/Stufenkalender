@@ -628,3 +628,59 @@ aside{position:sticky;top:12px}
 .dh.today::after,.col.today::after{content:"";position:absolute;inset:0;border:2px solid var(--accent);pointer-events:none;z-index:6}
 .dh.today::after{border-bottom:0}
 .col.today::after{border-top:0}
+
+/* ---------- Farbe = Kategorie, Füllung = Stufe (19.11.) ----------
+   .c-<farbe> liefert --cf (voll), --ci (Schrift auf voll), --ct (Tönung), --cx (Schrift auf Tönung/Fläche), --ce (Rand).
+   .f1 Fix = voll gefüllt, .f2 Wichtig = getönt mit Rand, .f3 Flexibel = nur Umriss.
+   Daraus werden die bisherigen Variablen --tfill/--tink/--tedge/--tc/--tbg gesetzt, die alle Bauteile benutzen. */
+.c-blue{--cf:#1f5fbf;--ci:#ffffff;--ct:#dbe7fa;--cx:#13407f;--ce:#154a99}
+.c-orange{--cf:#e8590c;--ci:#ffffff;--ct:#fde3d2;--cx:#8a3305;--ce:#b8460a}
+.c-violet{--cf:#7c4ddb;--ci:#ffffff;--ct:#ece4fc;--cx:#4b2a91;--ce:#5f36b8}
+.c-green{--cf:#2f9a4c;--ci:#ffffff;--ct:#dff3e4;--cx:#1d6b33;--ce:#217a3a}
+.c-pink{--cf:#d03f8a;--ci:#ffffff;--ct:#fbe1ef;--cx:#8f2259;--ce:#a82d6c}
+.c-teal{--cf:#00959b;--ci:#ffffff;--ct:#d3f0f1;--cx:#05595d;--ce:#00757a}
+.c-red{--cf:#c62848;--ci:#ffffff;--ct:#fbdde3;--cx:#8a1830;--ce:#9e1d38}
+.c-yellow{--cf:#b8900a;--ci:#ffffff;--ct:#f8edc6;--cx:#5e4700;--ce:#8f6f00}
+.c-slate{--cf:#555b7a;--ci:#ffffff;--ct:#e2e4ef;--cx:#2e3350;--ce:#3f4562}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) {
+.c-blue{--cf:#6ea2ff;--ci:#0b1a33;--ct:#1a2a4a;--cx:#b9d1ff;--ce:#9cc0ff}
+.c-orange{--cf:#ff9d4d;--ci:#2a1300;--ct:#3a2412;--cx:#ffd2ad;--ce:#ffbb85}
+.c-violet{--cf:#a98bff;--ci:#170c33;--ct:#2a2050;--cx:#d6c8ff;--ce:#c4b1ff}
+.c-green{--cf:#5fcf7a;--ci:#08220f;--ct:#15331d;--cx:#b5ecc2;--ce:#8de0a2}
+.c-pink{--cf:#ff7fbf;--ci:#2e0a1c;--ct:#3a1a2b;--cx:#ffc6e2;--ce:#ffa6d2}
+.c-teal{--cf:#3fcfd2;--ci:#042527;--ct:#10302f;--cx:#b0eff0;--ce:#7fe2e4}
+.c-red{--cf:#ff6f8a;--ci:#2e0610;--ct:#3d1520;--cx:#ffc2cd;--ce:#ff9aac}
+.c-yellow{--cf:#f0c24a;--ci:#2a2000;--ct:#352b0e;--cx:#fbe4a6;--ce:#f5d37a}
+.c-slate{--cf:#a3a9c8;--ci:#12152a;--ct:#262a40;--cx:#d7daea;--ce:#c0c5dd}
+}}
+:root[data-theme="dark"] .c-blue{--cf:#6ea2ff;--ci:#0b1a33;--ct:#1a2a4a;--cx:#b9d1ff;--ce:#9cc0ff}
+:root[data-theme="dark"] .c-orange{--cf:#ff9d4d;--ci:#2a1300;--ct:#3a2412;--cx:#ffd2ad;--ce:#ffbb85}
+:root[data-theme="dark"] .c-violet{--cf:#a98bff;--ci:#170c33;--ct:#2a2050;--cx:#d6c8ff;--ce:#c4b1ff}
+:root[data-theme="dark"] .c-green{--cf:#5fcf7a;--ci:#08220f;--ct:#15331d;--cx:#b5ecc2;--ce:#8de0a2}
+:root[data-theme="dark"] .c-pink{--cf:#ff7fbf;--ci:#2e0a1c;--ct:#3a1a2b;--cx:#ffc6e2;--ce:#ffa6d2}
+:root[data-theme="dark"] .c-teal{--cf:#3fcfd2;--ci:#042527;--ct:#10302f;--cx:#b0eff0;--ce:#7fe2e4}
+:root[data-theme="dark"] .c-red{--cf:#ff6f8a;--ci:#2e0610;--ct:#3d1520;--cx:#ffc2cd;--ce:#ff9aac}
+:root[data-theme="dark"] .c-yellow{--cf:#f0c24a;--ci:#2a2000;--ct:#352b0e;--cx:#fbe4a6;--ce:#f5d37a}
+:root[data-theme="dark"] .c-slate{--cf:#a3a9c8;--ci:#12152a;--ct:#262a40;--cx:#d7daea;--ce:#c0c5dd}
+.f1{--tfill:var(--cf);--tink:var(--ci);--tedge:var(--ce);--tc:var(--cf);--tbg:var(--ct)}
+.f2{--tfill:var(--ct);--tink:var(--cx);--tedge:var(--cf);--tc:var(--cf);--tbg:var(--ct)}
+.f3{--tfill:var(--surface);--tink:var(--cx);--tedge:var(--cf);--tc:var(--cf);--tbg:var(--ct)}
+.ev.f3,.tchip.f3{border-width:2px}
+.col.today .ev.f3{--tfill:var(--surface)}
+/* Punkte zeigen immer die Kategoriefarbe */
+.dot{background:var(--cf,var(--tc))}
+.ev .dot,.tchip .dot,.dragghost .dot{background:var(--cf);opacity:1}
+.f1 .ev .dot,.ev.f1 .dot,.tchip.f1 .dot{background:var(--ci)}
+/* Stufen-Kästen oben: neutral (Grau), gleiche Füll-Logik wie die Termine */
+.tgroup .chip{background:var(--surface);border:1.5px solid var(--cf)}
+.tgroup .chip .ctog,.tgroup .chip .count,.tgroup .chip .solo{color:var(--fg)}
+.tgroup .chip .solo{border-left-color:var(--line-strong)}
+.tgroup .chip .dot{background:var(--cf);box-shadow:none}
+.tgroup .chip[data-on="false"]{background:transparent;border:1.5px dashed var(--cf)}
+.tgroup .chip[data-on="false"] .ctog{color:var(--muted)}
+.tgroup .chip[data-on="false"] .dot{background:transparent;border:1.5px solid var(--cf)}
+/* kleine Legende im Alltag (Stufen-Filter) */
+.bstyle.s1{background:var(--muted);border-color:var(--muted)}.bstyle.s2{background:var(--line);border-color:var(--muted)}.bstyle.s3{background:transparent;border-color:var(--muted)}
+/* Farbauswahl in „Kategorien verwalten“ */
+.cswatches{grid-column:1 / -1;display:flex;flex-wrap:wrap;gap:6px}
+.sw span{background:var(--cf)}

@@ -26,9 +26,11 @@ const threeDay=()=>narrow.matches&&mode==='daily'; // Handy im Alltag: drei Tage
 const win3=()=>[DAY0,DAY0+1,DAY0+2];
 let START=6*60;
 const TIERS={1:{name:'Fix',rule:'wird nie verschoben'},2:{name:'Wichtig',rule:'weicht nur Stufe 1 aus'},3:{name:'Flexibel',rule:'weicht allem aus'}};
-const COLORS=['red','orange','yellow','green','teal','blue','violet','pink'];
-const TC={1:'t1',2:'t2',3:'t3'}; // Farbklasse je Stufe (k-t1 …), Farbe = Priorität
-const COLOR_NAMES={red:'Rot',orange:'Orange',yellow:'Gelb',green:'Grün',teal:'Türkis',blue:'Blau',violet:'Violett',pink:'Pink'};
+const COLORS=['blue','orange','violet','green','pink','teal','red','yellow','slate'];
+const TC={1:'t1',2:'t2',3:'t3'};
+// Farbe = Kategorie (c-blue …), Füllung = Stufe (f1 voll, f2 getönt, f3 nur Umriss)
+const kc=c=>`c-${COLORS.includes(c&&c.color)?c.color:'slate'} f${(c&&c.tier)||3}`;
+const COLOR_NAMES={red:'Himbeere',orange:'Orange',yellow:'Gelb',green:'Grün',teal:'Türkis',blue:'Blau',violet:'Violett',pink:'Pink',slate:'Grau'};
 const KEY='stufenkalender-v2';
 
 // Startkategorien für ein neues Konto
@@ -49,6 +51,8 @@ function normalize(s){
   const st=(s&&Array.isArray(s.events)&&Array.isArray(s.cats))?Object.assign(fresh(),clone(s)):fresh();
   // Früher hing „Gewohnheit“ an einzelnen Serien, jetzt an der Kategorie
   st.events.forEach(e=>{ if(e.habit){const c=st.cats.find(x=>x.id===e.cat); if(c) c.habit=true;} delete e.habit; });
+  // Kategorien ohne gültige Farbe bekommen die erste noch freie
+  st.cats.forEach(c=>{ if(!COLORS.includes(c.color)){ const used=st.cats.map(x=>x.color); c.color=COLORS.find(k=>!used.includes(k))||'slate'; } });
   if(!Array.isArray(st.todos)) st.todos=[];
   if(!st.trackers) st.trackers={gym:true,run:true,sprint:true};
   if(st.trackers.sprint==null) st.trackers.sprint=true;
@@ -184,7 +188,7 @@ function renderHabits(){
     const st=habitStats(c.id), dn=st.today&&st.today.done;
     const dots=st.recent.map(o=>`<span class="hd ${o.state}" title="${wd(o.day)} ${dtxt(o.day)}: ${o.state==='done'?'erledigt':o.state==='today'?'heute':'nicht erledigt'}"></span>`).join('');
     const btn=st.today?`<button type="button" class="hbtn${dn?' on':''}" data-habitcat="${c.id}" aria-pressed="${!!dn}">${dn?'✓ Heute erledigt':'Heute abhaken'}</button>`:'<span class="hfree">Heute nicht geplant</span>';
-    return `<div class="hcard k-${TC[c.tier]}">
+    return `<div class="hcard ${kc(c)}">
       <div class="htop"><span class="htitle">${esc(c.name)}</span><span class="hstreak${st.streak?'':' zero'}" title="Rekord: ${st.best}">${FLAME}${st.streak}</span></div>
       <div class="hdots" aria-label="Letzte Tage mit ${esc(c.name)}">${dots||'<span class="hfree">Noch keine vergangenen Termine</span>'}</div>
       <div class="hfoot">${btn}<span class="hbest">Rekord ${st.best}</span></div></div>`;}).join('')+'</div>';
@@ -227,7 +231,7 @@ function renderTodos(){
   $('todolist').innerHTML=list.map(t=>{
     const c=catOf(t), sug=todoSuggest(t,taken); if(sug) taken.push({id:'sug:'+t.id,day:sug.day,start:sug.start,dur:sug.dur,loc:null});
     const dueTxt=t.due==null?'':t.due<TODAY?` · <span class="over">überfällig (${dtxt(t.due)})</span>`:t.due===TODAY?' · <b>heute fällig</b>':` · bis ${wd(t.due)} ${dtxt(t.due)}`;
-    return `<div class="tchip todo k-${TC[c.tier]}" data-todo="${t.id}" aria-label="${esc(t.title)} – zum Einplanen in den Kalender ziehen">
+    return `<div class="tchip todo ${kc(c)}" data-todo="${t.id}" aria-label="${esc(t.title)} – zum Einplanen in den Kalender ziehen">
       <span class="grip">⠿ ZIEHEN</span>
       <button type="button" class="tedit" data-todoedit="${t.id}" title="Bearbeiten">${esc(t.title)}</button>
       <span class="h">${durTxt(t.dur)}${dueTxt}</span>
@@ -243,7 +247,7 @@ function renderQuick(){
   const short=all.filter(t=>t.dur<QUICK_MAX), long=all.length-short.length;
   const due=t=>t.due==null?'':t.due<TODAY?' · <span class="over">überfällig</span>':t.due===TODAY?' · <b>heute fällig</b>':` · bis ${wd(t.due)} ${dtxt(t.due)}`;
   box.innerHTML=`<h2 class="hhead" id="quick-h">Kurz erledigen${short.length?` <span class="todocount">${short.length}</span>`:''}</h2>
-    ${short.length?`<ul class="qlist">${short.map(t=>`<li class="k-${TC[catOf(t).tier]}">
+    ${short.length?`<ul class="qlist">${short.map(t=>`<li class="${kc(catOf(t))}">
       <button type="button" class="qcheck" data-tododone="${t.id}" aria-label="${esc(t.title)} abhaken"></button>
       <span class="qt">${esc(t.title)}</span><span class="qm">${durTxt(t.dur)}${due(t)}</span></li>`).join('')}</ul>`
       :'<p class="qnone">Keine kurzen To-dos offen.</p>'}
@@ -653,12 +657,12 @@ function renderFilters(){
     const on=cats.length===0||cats.some(c=>!state.hidden[c.id]);
     const chips=cats.length?cats.map(c=>{
       const vis=!state.hidden[c.id];
-      return `<span class="chip k-${TC[c.tier]}" data-on="${vis}">
+      return `<span class="chip ${kc(c)}" data-on="${vis}">
         <button type="button" class="ctog" data-cattog="${c.id}" aria-pressed="${vis}" title="Tippen: ${vis?'ausblenden':'einblenden'} · lange drücken: nur ${esc(c.name)}"><span class="dot"></span>${esc(c.name)}</button></span>`;}).join('')
       :'<span class="empty">Noch keine Kategorie in dieser Stufe.</span>';
     const sel=tierSel(), solo=!!sel&&sel.includes(t);
     const click=cats.length?` data-tiersolo="${t}" role="button" tabindex="0" aria-pressed="${solo}" title="${solo?'Diese Stufe abwählen':sel&&sel.length===1?'Diese Stufe dazunehmen':'Nur diese Stufe zeigen'}"`:'';
-    return `<div class="tgroup k-${TC[t]}${cats.length?' clickable':''}" data-on="${on}"${click}>
+    return `<div class="tgroup c-slate f${t}${cats.length?' clickable':''}" data-on="${on}"${click}>
       <div class="thead"><span class="ttog"><span><span class="nm">Stufe ${t} · ${TIERS[t].name}</span><span class="rule">${TIERS[t].rule}</span></span></span></div>
       <div class="chips">${chips}</div></div>`;
   }).join('');
@@ -705,7 +709,7 @@ function renderGrid(plan){
       const p=plan[e.id]; if(!p||p.unplaced) return;
       const c=catOf(e);
       if(p.day===d) items.push({e,p,c,start:p.start,dur:e.dur});
-      if(!daily && p.moved && e.day===d) ghosts+=`<div class="ghost k-${TC[c.tier]}" style="top:${(e.start-START)*PX}px;height:${e.dur*PX}px">${fmt(e.start)} urspr.</div>`;
+      if(!daily && p.moved && e.day===d) ghosts+=`<div class="ghost ${kc(c)}" style="top:${(e.start-START)*PX}px;height:${e.dur*PX}px">${fmt(e.start)} urspr.</div>`;
     });
     lanes(items);
     const evs=items.map(it=>{
@@ -723,12 +727,12 @@ function renderGrid(plan){
       if(tr&&tr.min>0){
         const top=Math.max(0,tr.leave-START), h=(p.start-START-top)*PX;
         const txt=h>=11?`${tr.est?'ca. ':''}${tr.min} min ab ${esc(placeName(tr.from))}`:'';
-        trv=`<div class="travel k-${TC[c.tier]}${tr.tight?' tight':''}" style="top:${top*PX}px;height:${h}px;left:calc(${w*it.lane}% + 3px);width:calc(${w}% - 12px)" title="${tr.min} min Weg ab ${esc(placeName(tr.from))}">${txt}</div>`;
+        trv=`<div class="travel ${kc(c)}${tr.tight?' tight':''}" style="top:${top*PX}px;height:${h}px;left:calc(${w*it.lane}% + 3px);width:calc(${w}% - 12px)" title="${tr.min} min Weg ab ${esc(placeName(tr.from))}">${txt}</div>`;
       }
       const tag=p.moved?'<span class="pl">Vorschlag</span>':'';
-      if(!daily&&p.moved) return `<button type="button" class="slotprop k-${TC[c.tier]}" data-accept="${e.id}" style="${pos}" title="Vorschlag übernehmen"><b>Vorschlag</b>${esc(e.title)}</button>`;
-      if(daily) return `${trv}<button type="button" class="ev k-${TC[c.tier]} s${c.tier}${cls}" data-view="${e.id}" style="${pos}" aria-label="${label}${p.moved?', Vorschlag':''}, Details ansehen">${inner}${tag}</button>`;
-      return `${trv}<button type="button" class="ev k-${TC[c.tier]} s${c.tier}${cls}${flashIds.has(e.id)?' flash':''}" data-id="${e.id}" style="${pos}" aria-label="${label}, Stufe ${c.tier}${p.moved?', Vorschlag':''}">
+      if(!daily&&p.moved) return `<button type="button" class="slotprop ${kc(c)}" data-accept="${e.id}" style="${pos}" title="Vorschlag übernehmen"><b>Vorschlag</b>${esc(e.title)}</button>`;
+      if(daily) return `${trv}<button type="button" class="ev ${kc(c)} s${c.tier}${cls}" data-view="${e.id}" style="${pos}" aria-label="${label}${p.moved?', Vorschlag':''}, Details ansehen">${inner}${tag}</button>`;
+      return `${trv}<button type="button" class="ev ${kc(c)} s${c.tier}${cls}${flashIds.has(e.id)?' flash':''}" data-id="${e.id}" style="${pos}" aria-label="${label}, Stufe ${c.tier}${p.moved?', Vorschlag':''}">
         ${inner}${tag}</button>`;
     }).join('');
     const nowl=(d===TODAY&&NOW.min>=START&&NOW.min<=END)?`<div class="nowline" style="top:${(NOW.min-START)*PX}px"></div>`:'';
@@ -752,7 +756,7 @@ function renderNext(plan){
     .map(x=>({...x,a:x.p.day*1440+x.p.start})).sort((a,b)=>a.a-b.a);
   const cur=list.filter(x=>x.a<=nowAbs&&x.a+x.e.dur>nowAbs);
   const up=list.filter(x=>x.a>nowAbs).slice(0,cur.length?1:2);
-  const card=(x,lbl,tm,cls,go)=>{const c=catOf(x.e); return `<div class="nx ${cls} k-${TC[c.tier]}"><span class="lbl">${lbl}</span><span class="tt"><span class="dot"></span>${esc(x.e.title)}</span><span class="tm">${tm}${x.e.loc?' · '+esc(placeName(x.e.loc)):''}</span>${go||''}${x.e.note?`<span class="note">${esc(x.e.note.split('\n')[0])}</span>`:''}</div>`;};
+  const card=(x,lbl,tm,cls,go)=>{const c=catOf(x.e); return `<div class="nx ${cls} ${kc(c)}"><span class="lbl">${lbl}</span><span class="tt"><span class="dot"></span>${esc(x.e.title)}</span><span class="tm">${tm}${x.e.loc?' · '+esc(placeName(x.e.loc)):''}</span>${go||''}${x.e.note?`<span class="note">${esc(x.e.note.split('\n')[0])}</span>`:''}</div>`;};
   const goLine=x=>{const tr=TRAVEL[x.e.id]; if(!tr||!tr.min) return ''; return `<span class="go">Los um ${fmt(tr.leave)} ab ${esc(placeName(tr.from))} (${tr.est?'ca. ':''}${tr.min} min)</span>`;};
   let html=cur.map(x=>card(x,'Jetzt',`bis ${fmt((x.a+x.e.dur)%1440)}`,'now')).join('');
   html+=up.map((x,i)=>card(x,i===0?'Als Nächstes':'Danach',relTime(x.a),'',goLine(x))).join('');
@@ -771,16 +775,16 @@ function renderSeg(){
   $('seg').innerHTML=`<button type="button" data-seg="0" aria-pressed="${at===0}">Alle</button>`+
     [1,2,3].filter(t=>state.cats.some(c=>c.tier===t)).map(t=>`<button type="button" data-seg="${t}" aria-pressed="${at===t}"><span class="bstyle s${t}"></span>${TIERS[t].name}</button>`).join('');
   const cats=at>0?state.cats.filter(c=>c.tier===at):[];
-  $('minis').innerHTML=cats.length>1?cats.map(c=>`<button type="button" class="mini k-${TC[c.tier]}" data-mini="${c.id}" aria-pressed="${!state.hidden[c.id]}"><span class="dot"></span>${esc(c.name)}</button>`).join(''):'';
+  $('minis').innerHTML=cats.length>1?cats.map(c=>`<button type="button" class="mini ${kc(c)}" data-mini="${c.id}" aria-pressed="${!state.hidden[c.id]}"><span class="dot"></span>${esc(c.name)}</button>`).join(''):'';
 }
 
 function renderLog(plan){
   const rows=[], props=[];
   EV.forEach(e=>{const p=plan[e.id]; if(!p||!p.conflict) return; const c=catOf(e);
-    rows.push({o:e.day*1440+e.start,h:`<li class="k-${TC[c.tier]}"><span class="dot"></span><div><div class="what">${LOCK_SVG}${esc(e.title)}</div><div class="from bad">${wd(e.day)} ${fmt(e.start)}: überschneidet sich mit ${esc(p.conflict.title)}</div><div class="why">Der Termin ist festgeschrieben und wird nicht mehr verschoben. Ändere ihn selbst, falls nötig.</div></div></li>`});});
+    rows.push({o:e.day*1440+e.start,h:`<li class="${kc(c)}"><span class="dot"></span><div><div class="what">${LOCK_SVG}${esc(e.title)}</div><div class="from bad">${wd(e.day)} ${fmt(e.start)}: überschneidet sich mit ${esc(p.conflict.title)}</div><div class="why">Der Termin ist festgeschrieben und wird nicht mehr verschoben. Ändere ihn selbst, falls nötig.</div></div></li>`});});
   EV.filter(e=>tierOf(e)===1&&inSleep(e.day,e.start,e.dur)).forEach(e=>{
     const c=catOf(e);
-    rows.push({o:e.day*1440+e.start,h:`<li class="k-${TC[c.tier]}"><span class="dot"></span><div><div class="what">${esc(e.title)}</div><div class="from bad">${wd(e.day)} ${fmt(e.start)}: liegt in deiner Schlafenszeit</div><div class="why">Fix-Termine werden nicht verschoben. Passe Termin oder Schlafzeit an.</div></div></li>`});
+    rows.push({o:e.day*1440+e.start,h:`<li class="${kc(c)}"><span class="dot"></span><div><div class="what">${esc(e.title)}</div><div class="from bad">${wd(e.day)} ${fmt(e.start)}: liegt in deiner Schlafenszeit</div><div class="why">Fix-Termine werden nicht verschoben. Passe Termin oder Schlafzeit an.</div></div></li>`});
   });
   EV.filter(e=>tierOf(e)!==1).forEach(e=>{
     const p=plan[e.id], c=catOf(e);
@@ -792,14 +796,14 @@ function renderLog(plan){
     else{const bc=catOf(p.by); why=`Platz gemacht für <b>${esc(p.by.title)}</b> (${esc(bc.name)}, Stufe ${bc.tier})`; short=esc(p.by.title);}
     const durTxt=`${Math.floor(e.dur/60)?Math.floor(e.dur/60)+' h ':''}${e.dur%60?e.dur%60+' min':''}`.trim();
     const head=`<span class="grip">⠿ ZIEHEN</span><span class="t">${isDone(e)?'<span class="ck" aria-label="erledigt">✓</span>':''}${esc(e.title)}</span><span class="h">${durTxt} · war ${wd(e.day)} ${fmt(e.start)}</span>`;
-    if(p.unplaced) props.push({o:e.day*1440+e.start,h:`<div class="tchip k-${TC[c.tier]} s${c.tier}" data-drag="${e.id}" aria-label="${esc(e.title)} neu einplanen">${head}<span class="bad">Kein freier Platz mehr. Zieh ihn selbst in den Kalender oder kürze die Dauer.</span></div>`});
-    else props.push({o:p.day*1440+p.start,h:`<div class="tchip k-${TC[c.tier]} s${c.tier}" data-drag="${e.id}" aria-label="${esc(e.title)} neu einplanen">${head}<span class="why">${why}</span><button type="button" data-accept="${e.id}">Vorschlag: ${wd(p.day)} ${fmt(p.start)}</button></div>`});
+    if(p.unplaced) props.push({o:e.day*1440+e.start,h:`<div class="tchip ${kc(c)} s${c.tier}" data-drag="${e.id}" aria-label="${esc(e.title)} neu einplanen">${head}<span class="bad">Kein freier Platz mehr. Zieh ihn selbst in den Kalender oder kürze die Dauer.</span></div>`});
+    else props.push({o:p.day*1440+p.start,h:`<div class="tchip ${kc(c)} s${c.tier}" data-drag="${e.id}" aria-label="${esc(e.title)} neu einplanen">${head}<span class="why">${why}</span><button type="button" data-accept="${e.id}">Vorschlag: ${wd(p.day)} ${fmt(p.start)}</button></div>`});
   });
   EV.forEach(e=>{
     const tr=TRAVEL[e.id], p=plan[e.id]; if(!tr||!tr.tight||!p||p.unplaced) return;
     const c=catOf(e);
     const have=tr.gap!=null?`du hast ${Math.max(0,tr.gap)} min Zeit`:`du müsstest um ${fmt(tr.leave)} los, stehst aber erst um ${fmt(wakeOf(p.day))} auf`;
-    rows.push({o:p.day*1440+p.start,h:`<li class="k-${TC[c.tier]}"><span class="dot"></span><div><div class="what">${esc(e.title)}</div><div class="from bad">${wd(p.day)} ${fmt(p.start)}: Weg wird knapp</div><div class="why">Ab ${esc(placeName(tr.from))} brauchst du ${tr.est?'ca. ':''}${tr.min} min, ${have}.</div></div></li>`});
+    rows.push({o:p.day*1440+p.start,h:`<li class="${kc(c)}"><span class="dot"></span><div><div class="what">${esc(e.title)}</div><div class="from bad">${wd(p.day)} ${fmt(p.start)}: Weg wird knapp</div><div class="why">Ab ${esc(placeName(tr.from))} brauchst du ${tr.est?'ca. ':''}${tr.min} min, ${have}.</div></div></li>`});
   });
   rows.sort((a,b)=>a.o-b.o); props.sort((a,b)=>a.o-b.o);
   $('log').innerHTML=rows.map(r=>r.h).join('');
@@ -1120,22 +1124,24 @@ function openMgr(){draft=clone(state.cats); renderMgr(); $('c-err').hidden=true;
 function readMgr(){
   draft.forEach(c=>{const r=document.querySelector(`.crow[data-cid="${c.id}"]`); if(!r) return;
     c.name=r.querySelector('.c-name').value; c.tier=+r.querySelector('.c-tier').value; c.habit=r.querySelector('.c-habit').checked;
+    const col=r.querySelector('.cswatches input:checked'); if(col) c.color=col.value;
     });
 }
 function renderMgr(){
   const counts={}; state.events.forEach(e=>counts[e.cat]=(counts[e.cat]||0)+1);
   $('clist').innerHTML=draft.map(c=>`
-    <div class="crow k-${TC[c.tier]}${c.del?' del':''}" data-cid="${c.id}">
+    <div class="crow ${kc(c)}${c.del?' del':''}" data-cid="${c.id}">
       <input class="c-name" id="cn-${c.id}" value="${esc(c.name)}" placeholder="Name, z. B. Training" aria-label="Name der Kategorie" ${c.del?'disabled':''}>
       <select class="c-tier" id="ct-${c.id}" aria-label="Stufe" ${c.del?'disabled':''}>
         ${[1,2,3].map(t=>`<option value="${t}" ${c.tier===t?'selected':''}>Stufe ${t} · ${TIERS[t].name}</option>`).join('')}</select>
       <button type="button" class="iconbtn" data-cdel="${c.id}">${c.del?'Wiederherstellen':'Löschen'}</button>
       <label class="chabit"><input type="checkbox" class="c-habit" ${c.habit?'checked':''} ${c.del?'disabled':''}> Als Gewohnheit verfolgen</label>
+      <div class="cswatches" role="radiogroup" aria-label="Farbe">${COLORS.map(k=>`<label class="sw c-${k} f1" title="${COLOR_NAMES[k]}"><input type="radio" name="col-${c.id}" value="${k}" ${c.color===k?'checked':''} ${c.del?'disabled':''} aria-label="${COLOR_NAMES[k]}"><span></span></label>`).join('')}</div>
 
       ${c.del&&counts[c.id]?`<div class="delnote">${counts[c.id]} Termin${counts[c.id]>1?'e werden':' wird'} beim Speichern mitgelöscht.</div>`:''}
     </div>`).join('') || '<p class="empty">Noch keine Kategorien.</p>';
 }
-$('clist').addEventListener('change',ev=>{if(ev.target.matches('.c-tier')){readMgr(); renderMgr();}});
+$('clist').addEventListener('change',ev=>{if(ev.target.matches('.c-tier,.cswatches input')){readMgr(); renderMgr();}});
 $('clist').addEventListener('click',ev=>{const b=ev.target.closest('[data-cdel]'); if(!b) return; readMgr();
   const c=draft.find(x=>x.id===b.dataset.cdel); if(c.isNew&&!c.del) draft=draft.filter(x=>x!==c); else c.del=!c.del; renderMgr();});
 $('c-add').onclick=()=>{readMgr(); const used=draft.map(c=>c.color); const color=COLORS.find(c=>!used.includes(c))||'teal';
@@ -1200,7 +1206,7 @@ $('sform').addEventListener('submit',ev=>{
 /* ---------- Termin ansehen (Alltag) ---------- */
 function openDetail(id){
   const e=EV.find(x=>x.id===id), p=PLAN[id]; if(!e||!p) return; const c=catOf(e), tr=TRAVEL[id];
-  $('dt-title').textContent=e.title; $('dt-dot').className='dot k-'+TC[c.tier];
+  $('dt-title').textContent=e.title; $('dt-dot').className='dot '+kc(c);
   const rows=[['Wann',`${wdl(p.day)}, ${dtxt(p.day)} · ${fmt(p.start)}–${fmt(p.start+e.dur)}`+(p.moved?' (Vorschlag)':'')],
     ['Stufe',`${c.tier} · ${TIERS[c.tier].name} · ${c.name}`]];
   if(e.loc) rows.push(['Ort',placeName(e.loc)]);
@@ -1443,7 +1449,7 @@ function startDrag(){
   const e=drag.e, c=catOf(e);
   drag.started=true; drag.placed=othersPlaced(e.id);
   document.body.classList.add('dragging'); drag.el.classList.add('dragsrc');
-  const g=document.createElement('div'); g.className=`dragghost k-${TC[c.tier]}`; g.textContent=e.title; document.body.appendChild(g); drag.ghost=g;
+  const g=document.createElement('div'); g.className=`dragghost ${kc(c)}`; g.textContent=e.title; document.body.appendChild(g); drag.ghost=g;
   showBands(e);
   const loop=()=>{ if(!drag||!drag.started) return;
     const y=drag.y, x=drag.x, edge=60;
