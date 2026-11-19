@@ -263,7 +263,7 @@ function syncTodoCat(){const c=state.cats.find(x=>x.id===$('t-cat').value); if(c
 /* ---------- Tracker: Krafttraining und Laufen ----------
    event.track = 'gym' | 'run' (Art des Termins), an/aus über state.trackers {gym,run}.
    Krafttraining: event.exercises = ['Kniebeugen', …], event.wlog = {[Vorkommen]: {[Übung]: [{reps,kg}, …]}} (ein Eintrag pro Satz).
-   Laufen: event.rlog = {[Vorkommen]: {km, sec}}. „Letztes Mal“ = jüngster Eintrag davor (egal welche Serie). */
+   Laufen: event.rlog = {[Vorkommen]: {km, sec, kind?}} (kind = Art des Laufs, z. B. „Long Run“). „Letztes Mal“ = jüngster Eintrag davor (egal welche Serie). */
 const numTxt=n=>String(n).replace('.',',');
 const trackOn=e=>!!(e&&e.track&&state.trackers&&state.trackers[e.track]);
 const occDay=(e,occ)=>(e.ex&&e.ex[occ]&&e.ex[occ].day)??occ;
@@ -275,12 +275,22 @@ function lastSets(name,beforeDay){
       if(!best||day>best.day) best={day,name:k,sets:log[k]}; }); });
   return best;
 }
-function lastRun(beforeDay){
-  let best=null;
+// Letzter Lauf vor dem Tag; mit kind nur Läufe derselben Art (Groß-/Kleinschreibung egal)
+function lastRun(beforeDay,kind){
+  const k=(kind||'').trim().toLowerCase(); let best=null;
   state.events.forEach(e=>{ if(!e.rlog) return;
-    Object.entries(e.rlog).forEach(([occ,r])=>{ const day=occDay(e,+occ); if(day>=beforeDay) return; if(!best||day>best.day) best={day,...r}; }); });
+    Object.entries(e.rlog).forEach(([occ,r])=>{ const day=occDay(e,+occ); if(day>=beforeDay) return;
+      if(k&&(r.kind||'').toLowerCase()!==k) return; if(!best||day>best.day) best={day,...r}; }); });
   return best;
 }
+// Bisher benutzte Lauf-Arten (neueste zuerst), aufgefüllt mit Beispielen
+function runKinds(){
+  const seen=[]; state.events.forEach(e=>{ if(!e.rlog) return; Object.entries(e.rlog).forEach(([occ,r])=>{ if(r.kind) seen.push({day:occDay(e,+occ),kind:r.kind}); }); });
+  seen.sort((a,b)=>b.day-a.day); const out=[];
+  [...seen.map(x=>x.kind),'Long Run','Recovery Run','3 km','5 km'].forEach(k=>{ if(out.length<8&&!out.some(x=>x.toLowerCase()===k.toLowerCase())) out.push(k); });
+  return out;
+}
+const runTxt=r=>`${numTxt(r.km)} km in ${fmtDur(r.sec)} min${paceTxt(r.km,r.sec)?' · '+paceTxt(r.km,r.sec):''}`;
 const fmtDur=sec=>{sec=Math.round(sec); const h=Math.floor(sec/3600), m=Math.floor(sec%3600/60), x=sec%60; return (h?h+':'+String(m).padStart(2,'0'):m)+':'+String(x).padStart(2,'0');};
 function parseRunTime(t){ t=(t||'').trim().replace(',','.'); if(!t) return null;
   if(/^\d+(\.\d+)?$/.test(t)) return Math.round(parseFloat(t)*60); // nur Minuten
@@ -314,10 +324,14 @@ function openWorkout(inst){
   $('w-sub').textContent=`${wdl(inst.day)}, ${dtxt(inst.day)}`;
   $('w-gym').hidden=run; $('w-run').hidden=!run; $('r-err').hidden=true;
   if(run){
-    const cur=s.rlog&&s.rlog[inst.occ], last=lastRun(inst.day);
-    $('r-last').textContent=last?`Letztes Mal (${wd(last.day)} ${dtxt(last.day)}): ${numTxt(last.km)} km in ${fmtDur(last.sec)} min · ${paceTxt(last.km,last.sec)}`:'Noch kein früherer Lauf.';
+    const cur=s.rlog&&s.rlog[inst.occ];
+    // Art vorschlagen: gespeicherte Art, sonst die Art vom letzten Lauf dieses Termins
+    let kind=cur&&cur.kind||'';
+    if(!cur&&s.rlog){ const prev=Object.entries(s.rlog).map(([o,r])=>({day:occDay(s,+o),r})).filter(x=>x.day<inst.day&&x.r.kind).sort((a,b)=>b.day-a.day)[0]; if(prev) kind=prev.r.kind; }
+    $('r-kind').value=kind;
+    $('r-kinds').innerHTML=runKinds().map(k=>`<button type="button" class="rkind" data-kind="${esc(k)}">${esc(k)}</button>`).join('');
     $('r-km').value=cur?numTxt(cur.km):''; $('r-time').value=cur?fmtDur(cur.sec):'';
-    syncPace(); $('ov-workout').hidden=false; setTimeout(()=>$('r-km').focus(),0); return;
+    syncRun(); $('ov-workout').hidden=false; setTimeout(()=>$('r-km').focus(),0); return;
   }
   const cur=(s.wlog&&s.wlog[inst.occ])||{};
   // Übungen des Termins plus Übungen, die nur bei diesem Workout dazukamen
@@ -326,8 +340,22 @@ function openWorkout(inst){
   $('w-gym').hidden=false; $('w-newex').hidden=true; $('w-exname').value='';
   $('ov-workout').hidden=false;
 }
-function syncPace(){$('r-err').hidden=true; const km=parseFloat($('r-km').value.replace(',','.')), sec=parseRunTime($('r-time').value); $('r-pace').textContent=paceTxt(km,sec)?'Tempo: '+paceTxt(km,sec):'';}
-$('r-km').addEventListener('input',syncPace); $('r-time').addEventListener('input',syncPace);
+// „Letztes Mal“ passend zur Art + Tempo im Vergleich zum letzten Lauf dieser Art
+function syncRun(){
+  $('r-err').hidden=true; const inst=wInst; if(!inst) return;
+  const kind=$('r-kind').value.trim(), last=lastRun(inst.day,kind);
+  document.querySelectorAll('#r-kinds .rkind').forEach(b=>b.classList.toggle('on',!!kind&&b.dataset.kind.toLowerCase()===kind.toLowerCase()));
+  $('r-last').textContent=last?`Letzter ${kind?'„'+(last.kind||kind)+'“':'Lauf'} (${wd(last.day)} ${dtxt(last.day)}): ${runTxt(last)}`
+    :kind?`Noch kein früherer Lauf „${kind}“ – ab jetzt wird damit verglichen.`:'Noch kein früherer Lauf.';
+  const km=parseFloat($('r-km').value.replace(',','.')), sec=parseRunTime($('r-time').value);
+  let t=paceTxt(km,sec)?'Tempo: '+paceTxt(km,sec):'';
+  if(t&&last&&last.km>0&&last.sec>0){ const d=Math.round(sec/km-last.sec/last.km);
+    t+=d===0?' · gleich schnell wie letztes Mal':` · ${fmtDur(Math.abs(d)).replace(/^0:/,'')}${Math.abs(d)<60?' s':' min'}/km ${d<0?'schneller':'langsamer'} als letztes Mal`; }
+  $('r-pace').textContent=t;
+}
+$('r-km').addEventListener('input',syncRun); $('r-time').addEventListener('input',syncRun); $('r-kind').addEventListener('input',syncRun);
+$('r-kinds').addEventListener('click',ev=>{ const b=ev.target.closest('.rkind'); if(!b) return;
+  $('r-kind').value=$('r-kind').value.trim().toLowerCase()===b.dataset.kind.toLowerCase()?'':b.dataset.kind; syncRun(); });
 $('w-cancel').onclick=()=>{$('ov-workout').hidden=true;};
 // „+ Übung“: weitere Übung nur für dieses Workout (dauerhaft: im Termin unter „Übungen“)
 $('w-addex').onclick=()=>{ $('w-newex').hidden=false; $('w-addex').hidden=true; $('w-exname').focus(); };
@@ -358,7 +386,9 @@ $('wform').addEventListener('submit',ev=>{
     const km=parseFloat(kmT.replace(',','.')), sec=parseRunTime(tT);
     if((kmT&&!(km>0))||(tT&&!(sec>0))){$('r-err').textContent='Gib die Distanz als Zahl (z. B. 5,2) und die Zeit als mm:ss (z. B. 28:30) ein.'; $('r-err').hidden=false; return;}
     s.rlog=s.rlog||{};
-    if(km>0||sec>0){ s.rlog[inst.occ]={km:km>0?km:0,sec:sec>0?sec:0}; saved=true; } else delete s.rlog[inst.occ];
+    let kind=$('r-kind').value.trim().replace(/\s+/g,' ');
+    if(kind){ const known=runKinds().find(k=>k.toLowerCase()===kind.toLowerCase()); if(known) kind=known; }
+    if(km>0||sec>0){ s.rlog[inst.occ]={km:km>0?km:0,sec:sec>0?sec:0}; if(kind) s.rlog[inst.occ].kind=kind; saved=true; } else delete s.rlog[inst.occ];
     if(!Object.keys(s.rlog).length) delete s.rlog;
   } else {
     const log={};
@@ -374,7 +404,7 @@ $('wform').addEventListener('submit',ev=>{
   $('ov-workout').hidden=true; render(); toast(`${s.track==='run'?'Lauf':'Workout'} gespeichert${saved?' – Termin abgehakt':''}.`);
 });
 function trackSummary(e){
-  if(e.track==='run'){const r=e.rlog&&e.rlog[e.occ]; return r?`${numTxt(r.km)} km in ${fmtDur(r.sec)} min${paceTxt(r.km,r.sec)?' · '+paceTxt(r.km,r.sec):''}`:'';}
+  if(e.track==='run'){const r=e.rlog&&e.rlog[e.occ]; return r?`${r.kind?esc(r.kind)+': ':''}${runTxt(r)}`:'';}
   const lg=e.wlog&&e.wlog[e.occ]; return lg?Object.entries(lg).map(([n,v])=>`${esc(n)}: ${gymTxt(v)}`).join('<br>'):'';
 }
 let EV=[];
