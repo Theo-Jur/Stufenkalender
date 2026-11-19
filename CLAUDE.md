@@ -1,52 +1,101 @@
 # Projektnotiz für Claude
 
+Stand: 19.11.2026. Diese Notiz soll reichen, um in einem neuen Chat ohne Vorwissen weiterzuarbeiten.
+
 ## Wer und wofür
-- Persönlicher Kalender von Theo (GitHub: Theo-Jur), erstmal nur für ihn selbst. Live unter https://stufenkalender.vercel.app
-- Theo ist kein Programmierer: Antworten auf Deutsch, einfach erklären, Klickwege genau beschreiben, nach jeder Änderung sagen, was er tun muss (meist nur neu laden).
-- Ablauf einer Änderung: Code ändern → testen → auf `main` pushen → Vercel veröffentlicht automatisch (1–2 min) → Theo lädt mit Strg+F5 neu bzw. startet die installierte App neu.
+- Persönlicher Kalender von Theo (GitHub: Theo-Jur, Repo `Theo-Jur/Stufenkalender`), nur für ihn selbst. Live unter https://stufenkalender.vercel.app (auch als installierte App/PWA am Handy).
+- Theo ist kein Programmierer: **Antworten auf Deutsch**, einfach erklären, Klickwege genau beschreiben, nach jeder Änderung sagen, was er tun muss.
+- Er schreibt kurz und oft mit Tippfehlern; im Zweifel kurz nachfragen, bei klaren Wünschen direkt umsetzen. Er mag es übersichtlich und simpel, probiert viel aus und ändert Entscheidungen auch wieder (siehe „Entscheidungen“ unten).
+
+## Arbeitsablauf
+1. Repo mit Schreibrechten holen: `add_repo` mit `access: "push"`, dann `git clone --depth 1 https://github.com/Theo-Jur/stufenkalender /home/claude/stufenkalender`.
+2. `npm ci` (Playwright für die Tests ist nicht in `package.json`; falls es fehlt: `npm i --no-save playwright && npx playwright install chromium`).
+3. Code ändern → Test-Build und Tests (siehe „Testen“) → bei Oberflächen-Änderungen Screenshots am Computer (1280 px) **und** Handy (390 px, auch hell/dunkel) anschauen.
+4. Direkt auf `main` committen und pushen (so gewünscht; deutsche Commit-Nachricht). Vercel veröffentlicht automatisch in 1–2 min.
+5. Theo sagen: 1–2 min warten, dann am Computer **Strg+F5**, am Handy App ganz schließen und neu öffnen.
+- **Datenformat ändern:** Theo vorher kurz Bescheid sagen; alte Daten müssen weiter laden (`normalize` in `app.js` ergänzt/migriert).
+- Diese Notiz bei größeren Änderungen mitpflegen.
 
 ## Grundidee (nicht ohne Rückfrage ändern)
-- Termine gehören zu **Kategorien**, jede Kategorie hat eine **Stufe**: 1 Fix, 2 Wichtig, 3 Flexibel. Farbe = nur Stufe: ein Farbton (Indigo) in drei Stärken, je fester desto dunkler (Tokens `--t1/2/3-fill|ink|edge|tint`, Klassen `k-t1/2/3`), satt/deckend gefüllt, auch die drei Stufen-Kästen. Keine Ampelfarben – Theo mag sie nicht (17.11.2026). Unterschiedliche Randlinien je Stufe hat Theo bewusst entfernt (17.11.2026).
-- Der Planer verschiebt **nie selbst**. Verdrängte Termine landen in der Ablage „Neu einplanen“; Theo zieht sie per Drag & Drop in den Kalender (grüne Bereiche passen) oder übernimmt den Vorschlag.
+- Termine gehören zu **Kategorien**, jede Kategorie hat eine **Stufe**: 1 Fix (wird nie verschoben), 2 Wichtig (weicht nur Stufe 1 aus), 3 Flexibel (weicht allem aus).
+- **Farbe = nur Stufe:** ein Farbton (Indigo) in drei Stärken, je fester desto dunkler, satt/deckend gefüllt – Termine und die drei Stufen-Kästen. Tokens `--t1/2/3-fill|ink|edge|tint`, Klassen `k-t1/2/3` (`TC` in `app.js`).
+- Der Planer verschiebt **nie selbst**. Verdrängte Termine landen in der Ablage „Neu einplanen“; Theo zieht sie in den Kalender (grüne Bereiche passen) oder übernimmt den Vorschlag.
 - Festschreiben (ab Vorabend 20 Uhr, einstellbar oder pro Termin), nichts in die Vergangenheit, Schlafzeiten sind tabu für Stufe 2/3, Wegzeiten zwischen Orten (vom Ort des vorherigen Termins, sonst Zuhause).
-- Zwei Modi: **Planen** (alles bearbeitbar) und **Alltag** (nur ansehen, kleine Stufen-Filter, „Jetzt/Als Nächstes“, Termin antippen zeigt Details).
-- Weitere Funktionen: einfache Tracker für Krafttraining (Sätze/Wdh./Gewicht) und Laufen (km/Zeit), je mit „letztes Mal“, To-dos (Ablage „Zu erledigen“), Abhaken und Gewohnheiten mit Serien (Streaks), wiederkehrende Termine (täglich/wöchentlich/2-wöchentlich, Wochentage, Enddatum), Bemerkungen, beliebige Dauer, Wochen blättern, .ics-Import, Orte & Wege, Kategorien verwalten.
+- Zwei Modi: **Planen** (alles bearbeitbar) und **Alltag** (ansehen, abhaken, Workouts eintragen).
+
+## Oberfläche (aktueller Stand)
+**Kopf:** links Titel + Speicher-Status („Gespeichert“). Rechts: „+ Termin“ (am Handy stattdessen runder Knopf unten rechts, `.addbig` fixed), „Einstellungen“ (Zahnrad, nur Planen), „i“ (Hilfe-Fenster „So funktioniert's“, `#ov-help` – bei neuen Funktionen dort einen Punkt ergänzen), Umschalter Planen/Alltag, Konto-Kreis (Anfangsbuchstabe der E-Mail; Menü mit E-Mail, Schalter „Dunkles Design“ pro Gerät in `localStorage` `stufenkalender-theme`, Abmelden).
+
+**Einstellungen** (`#ov-settings`): Kategorien verwalten (inkl. Häkchen „Als Gewohnheit verfolgen“), Schlafzeiten, Orte & Wege, Kalender importieren, Festschreiben, Puffer zwischen Terminen, Tracker-Schalter Krafttraining / Laufen.
+
+**Planen-Modus:**
+- Drei Stufen-Kästen (`#filters`): Kasten antippen = nur diese Stufe; zweiter Kasten kommt dazu; dritter = nur dieser; gewählten nochmal = abwählen (`tierSel`, `clickTier`). Kategorie-Knöpfe darin: tippen = ein/aus (eingeblendet in Stufenfarbe, ausgeblendet weiß/gestrichelt), lange drücken oder Rechtsklick = nur diese Kategorie.
+- Ablage „Zu erledigen“ (To-dos), Leiste mit KW + Pfeilen ‹ › und „Ansicht: …“, Ablage „Neu einplanen“ (sticky), dann der Kalender.
+- Kalender nutzt die volle Breite; rechte Spalte „Hinweise“ erscheint nur bei Problemen (rote Zahl).
+- Freie Stelle antippen = neuer Termin mit Tag/Uhrzeit (Viertelstunde). Termin antippen = bearbeiten, ziehen = verschieben.
+- Termine ≤ 75 min einzeilig je Titel/Uhrzeit (`.compact`), < 45 min ganz einzeilig; Kategorie-Name steht nicht im Termin (nur Ort).
+
+**Alltag-Modus:** „Jetzt / Als Nächstes“, kleine Stufen-Filter, Kasten „Kurz erledigen“ (To-dos < 30 min), Leiste „Gewohnheiten“, Kalender. Termin antippen = Detail-Fenster mit „Als erledigt markieren“ und ggf. „Workout“ / „Lauf eintragen“.
+
+**Handy (≤ 700 px):**
+- Alltag: immer **drei Tage** ab `DAY0` (`threeDay()`, `win3()`), Pfeile/Wischen = ±3 Tage, auch über Wochengrenzen; Plan wird pro beteiligter Woche gerechnet (`planWeek`) und zusammengeführt.
+- Planen: **ganze Woche, seitlich scrollbar**; die Tageszeile wird per JS oben gehalten (`stickHead`, CSS-Variable `--dhs`). Wischen blättert erst am Rand die Woche.
+- **Kein Fenster-im-Fenster:** `.cal` hat `overflow:clip`, nur die Seite scrollt, Tageszeile `.dh` klebt oben. Einzige Ausnahme: seitliches Scrollen am Handy im Planen-Modus.
+
+**Rückgängig:** Jede echte Datenänderung (Filter zählen nicht) zeigt unten einen Hinweis mit „Rückgängig“ (7 s), am Computer auch Strg+Z. Mechanik: `trackUndo` vergleicht nach jedem `render()` einen Schnappschuss; ein `toast()` im selben Durchlauf bekommt automatisch den Rückgängig-Knopf. Ein Schritt zurück.
+
+## Funktionen im Detail
+- **Gewohnheiten** pro **Kategorie** (`cat.habit`): alle Termine der Kategorie zählen zusammen (`habitStats(catId)`). Gezählt werden Tage mit mindestens einem geplanten Termin der Kategorie; geschafft, wenn mindestens einer abgehakt ist; ein offener Tag „heute“ bricht die Serie nicht. Karte zeigt Serie (Flamme), Rekord, letzte 10 Tage als Punkte, „Heute abhaken“.
+- **To-dos:** Ablage „Zu erledigen“ (Planen): „+ To-do“ (Titel, Kategorie, ungefähre Dauer 5 min–4 h, optional „bis wann“). Ziehen in den Kalender oder „Vorschlag“ antippen → wird normaler Termin (`scheduleTodo`); ✓ = erledigt (entfernt). Vorschläge (`todoSuggest`): nur in den angezeigten Tagen, ab jetzt, vor der Frist, nur echt freie Lücken (auch für Fix-To-dos, nie Schlafenszeit), dringendste zuerst, ohne sich zu überschneiden. Alltag: Kasten „Kurz erledigen“ (`renderQuick`, `QUICK_MAX = 30`, strikt < 30 min) zum Abhaken + Hinweis auf größere.
+- **Tracker** (an/aus unter Einstellungen, `state.trackers`): im Termin-Fenster „Art des Termins“ = Normal / Krafttraining / Laufen.
+  - Krafttraining: Übungen eine pro Zeile; Workout-Fenster mit **einer Zeile pro Übung: Sätze / Wdh. / Gewicht**, darüber „Letztes Mal“, Felder damit vorausgefüllt (`lastSets`). Bewusst sehr simpel halten.
+  - Laufen: km + Zeit (`mm:ss`, `h:mm:ss` oder nur Minuten, `parseRunTime`), Tempo min/km, letzter Lauf (`lastRun`).
+  - Speichern hakt den Termin ab. Nur Vorkommen bis heute lassen sich eintragen/abhaken.
+- Weiter: wiederkehrende Termine (täglich/wöchentlich/2-wöchentlich, Wochentage, Enddatum, Ausnahmen pro Vorkommen), Bemerkungen, beliebige Dauer, .ics-Import, Orte & Wegzeiten, helles/dunkles Design, Offline-Puffer und Abgleich zwischen Geräten.
 
 ## Technik
-- Vite + reines JavaScript (kein Framework), PWA über `vite-plugin-pwa`, Supabase für Login (E-Mail + Passwort) und Speicherung. Hosting: Vercel, verbunden mit GitHub.
-- Supabase-Projekt: Adresse und **publishable** Schlüssel stehen in `src/config.js` (öffentlich gewollt). Niemals einen secret/service_role-Schlüssel ins Repo.
-- Sign-ups sollen in Supabase abgeschaltet sein, sobald Theos Konto läuft (nur er nutzt die App).
+- Vite + reines JavaScript (kein Framework), PWA über `vite-plugin-pwa`, Supabase für Login (E-Mail + Passwort) und Speicherung (eine Zeile JSON pro Konto, Realtime-Abgleich). Hosting: Vercel, verbunden mit GitHub.
+- Supabase-Adresse und **publishable** Schlüssel stehen in `src/config.js` (öffentlich gewollt). **Niemals** einen secret/service_role-Schlüssel ins Repo.
+- Sign-ups sollen in Supabase abgeschaltet sein (nur Theo nutzt die App).
 
 | Datei | Inhalt |
 |---|---|
-| `index.html` | Gerüst: Lade-, Anmelde-, Konfig-Bildschirm, Kalender, alle Dialoge |
-| `src/main.js` | Start, Anmeldung, Fehler-/Zeitlimit-Anzeige, verbindet App und Store |
-| `src/urlcheck.js` | Wird vor Supabase geladen; fängt Fehler aus E-Mail-Links ab (verhindert Neu-Lade-Schleife) |
-| `src/app.js` | Die ganze Kalenderlogik und Darstellung (`startApp({initial,onChange})`, gibt `replaceState` zurück) |
+| `index.html` | Gerüst: Lade-, Anmelde-, Konfig-Bildschirm, Kalender, alle Dialoge (Termin, To-do, Workout, Einstellungen, Hilfe, …); setzt im `<head>` das gespeicherte Design |
+| `src/main.js` | Start, Anmeldung, Fehler-/Zeitlimit-Anzeige, Konto-Menü, Hell/Dunkel-Schalter, verbindet App und Store |
+| `src/urlcheck.js` | Wird vor Supabase geladen; fängt Fehler aus E-Mail-Links ab |
+| `src/supabase.js` / `src/config.js` | Supabase-Client und Zugangsdaten |
+| `src/app.js` | Die ganze Kalenderlogik und Darstellung (`startApp({initial,onChange})`, gibt `replaceState` zurück). ~1400 Zeilen – bei größeren Umbauten in Module aufteilen |
 | `src/store.js` | Speichern in Tabelle `calendar_state`, lokaler Cache, Abgleich, Offline-Puffer |
-| `src/style.css` | Gestaltung mit Farb-Tokens, helles und dunkles Design |
+| `src/style.css` | Gestaltung mit Farb-Tokens, helles und dunkles Design (neuere Regeln stehen gesammelt am Dateiende) |
 | `supabase/schema.sql` | Tabelle + Row Level Security + Realtime |
 
-## Datenmodell (`state`, als ein JSON pro Konto gespeichert)
-- `cats`: `{id,name,tier,habit?}` – `habit: true` macht die ganze Kategorie zur Gewohnheit · `places`: `{id,name}` · `home`: Orts-id · `travel`: `{"a|b": Minuten}` (Schlüssel sortiert, siehe `pkey`)
+Wichtige Stellen in `app.js`: `normalize` (Migrationen), `buildEV` (Einzeltermine der Woche), `schedule` (Planer), `render` (alles neu zeichnen + speichern + Rückgängig), `renderGrid`, `openForm`/Formular-Submit, `openDetail`, Drag & Drop (`pointerdown`/`endDrag`, auch für To-do-Karten), `openWorkout`, `renderHabits`, `renderTodos`, `renderQuick`.
+
+## Datenmodell (`state`, ein JSON pro Konto)
+- `cats`: `{id,name,tier,color,habit?}` · `places`: `{id,name}` · `home`: Orts-id · `travel`: `{"a|b": Minuten}` (Schlüssel sortiert, `pkey`)
 - `events`: `{id,title,cat,day,start,dur,loc,note,locked,rec,ex,uid,done?,track?,exercises?,wlog?,rlog?,fromTodo?,due?}`
   - `day` = Tagesnummer ab Montag 9.11.2026 (`BASE`), kann negativ sein; `start`/`dur` in Minuten.
-  - `rec` = `{freq:'daily'|'weekly'|'biweekly', days:[0-6]|null, until:Tagesnummer|null}`
-  - `ex` = Ausnahmen einer Serie: `{[Tagesnummer]: 'skip' | {day,start}}`
+  - `rec` = `{freq:'daily'|'weekly'|'biweekly', days:[0-6]|null, until:Tagesnummer|null}`; `ex` = Ausnahmen `{[Tagesnummer]: 'skip' | {day,start}}`.
   - `uid` nur bei importierten Terminen (erneuter Import aktualisiert statt zu verdoppeln).
-  - `done` = erledigte Vorkommen `{[Tagesnummer des Vorkommens]: 1}` (optional, auch bei Einzelterminen). Nur Vorkommen bis heute lassen sich abhaken.
-  - Gewohnheiten gelten pro **Kategorie** (`cat.habit`), alle Termine der Kategorie zählen zusammen (Leiste „Gewohnheiten“ im Alltag-Modus, `habitStats(catId)`). Gezählt werden Tage mit mindestens einem geplanten Termin der Kategorie; ein Tag ist geschafft, wenn mindestens einer abgehakt ist. Ein noch offener Tag „heute“ bricht die Serie nicht. Früheres `event.habit` wird in `normalize` auf die Kategorie umgezogen (18.11.2026).
-  - `track` = `'gym'` (Krafttraining) | `'run'` (Laufen) | fehlt (normaler Termin) – im Termin-Fenster „Art des Termins“. Nur sichtbar/aktiv, wenn der Tracker unter Einstellungen an ist (`state.trackers = {gym, run}`, Standard beide an).
-  - Krafttraining: `exercises` = Übungsnamen (eine pro Zeile, nur bei `track:'gym'`), `wlog` = `{[Vorkommen]: {[Übung]: {sets, reps, kg}}}` – pro Übung nur eine Zeile mit festen Feldern Sätze/Wdh./Gewicht (Theos Wunsch). Ältere Einträge als Satz-Liste werden in `normalize` umgerechnet.
-  - Laufen: `rlog` = `{[Vorkommen]: {km, sec}}`, Tempo wird angezeigt (min/km). Zeit-Eingabe `mm:ss`, `h:mm:ss` oder nur Minuten (`parseRunTime`).
-  - Workout-/Lauf-Fenster (`openWorkout`) zeigt „Letztes Mal“ (`lastSets`/`lastRun`, jüngster Eintrag davor, egal welche Serie) und füllt damit vor; Speichern hakt den Termin ab. Bewusst **sehr simpel** halten (18.11.2026).
-- `todos`: `[{id,title,cat,dur,due}]` – Aufgaben ohne feste Zeit (Ablage „Zu erledigen“ im Planen-Modus, `due` = Tagesnummer oder null). Ziehen in den Kalender oder Vorschlag übernehmen macht daraus einen normalen Termin mit `fromTodo: true, due` (`scheduleTodo`). ✓ entfernt das To-do. Im Alltag-Modus zeigt der Kasten „Kurz erledigen“ (`renderQuick`) nicht eingeplante To-dos unter 30 min (`QUICK_MAX`) zum Abhaken plus Hinweis auf größere. Vorschläge (`todoSuggest`) suchen nur in der angezeigten Woche eine wirklich freie Lücke vor der Frist und überschneiden sich nicht gegenseitig.
+  - `done` = erledigte Vorkommen `{[Vorkommen]: 1}`.
+  - `track` = `'gym'` | `'run'` | fehlt. `exercises` = Übungsnamen. `wlog` = `{[Vorkommen]: {[Übung]: {sets, reps, kg}}}`. `rlog` = `{[Vorkommen]: {km, sec}}`.
+  - `fromTodo`, `due` bei Terminen, die aus einem To-do entstanden sind.
+- `todos`: `[{id,title,cat,dur,due}]` (`due` = Tagesnummer oder null).
+- `trackers`: `{gym, run}` (Standard beide an).
+- Weitere Felder: `hidden` (Filter), `buffer`, `lockMode`, `sleep`, `nextId`.
+- Migrationen in `normalize`: früheres `event.habit` → `cat.habit`; Termine mit `exercises` ohne `track` → `'gym'`; alte `wlog`-Satzlisten → `{sets,reps,kg}`; fehlende `todos`/`trackers` ergänzen.
 - Angezeigt und geplant wird mit Einzelterminen der sichtbaren Woche (`buildEV`), ids `"<id>@<tag>"`; Änderungen an Einzelterminen über `setInst`.
-- Handy (≤ 700 px) im **Alltag**-Modus: immer drei Tage ab `DAY0` (`threeDay()`, `win3()`, `showDay(d)`), Pfeile/Wischen blättern um 3 Tage, auch über Wochengrenzen. Der Plan wird dafür pro beteiligter Woche berechnet (`planWeek`) und zusammengeführt – der Planer bleibt wochenweise. To-do-Vorschläge nur in den angezeigten Tagen.
-- Handy im **Planen**-Modus: ganze Woche, seitlich scrollbar (Theos Wunsch, 18.11.2026). Da `.cal` dort ein Scroll-Container ist, wird die Tageszeile per JS (`stickHead`, CSS-Variable `--dhs`) oben gehalten. Wischen blättert erst am Rand die Woche.
-- **Kein Fenster-im-Fenster:** Der Kalender (`.cal`, `overflow:clip`) hat kein eigenes Scrollen, nur die Seite scrollt; die Tageszeile (`.dh`) klebt oben. Theo findet inneres Scrollen beim Navigieren nervig (18.11.2026) – nicht wieder einführen (einzige Ausnahme: seitliches Scrollen am Handy im Planen-Modus).
-- Weitere Felder: `hidden` (Filter), `buffer`, `lockMode`, `sleep`, `nextId`, `trackers`.
-- **Wenn sich das Datenformat ändert:** alte gespeicherte Daten müssen weiter laden (`normalize` in `app.js` ergänzt fehlende Felder). Vorher Theo Bescheid sagen.
+
+## Entscheidungen von Theo (nicht wieder rückgängig machen ohne Rückfrage)
+- **Keine Ampelfarben** (Rot/Gelb/Grün) für Stufen – stattdessen Indigo in drei Stärken (17.11.).
+- **Keine unterschiedlichen Randlinien** je Stufe (gestrichelt/gepunktet) (17.11.).
+- Ganzer Stufen-Kasten anklickbar statt „nur diese Stufe“-Text; Kategorie-Knöpfe ohne Zahlen und „nur“ (17.11.).
+- „+ Termin“ oben neben „Einstellungen“ (Computer), runder Knopf unten rechts (Handy) (17.11.).
+- Seltene Einstellungen (inkl. Festschreiben, Puffer) gesammelt hinter „Einstellungen“ (17.11.).
+- **Kein inneres Scrollen** des Kalenders; Ausnahme seitliches Scrollen am Handy im Planen-Modus; Alltag am Handy = drei Tage ohne Seitwärts-Scrollen (18.11.).
+- Gewohnheiten pro Kategorie, nicht pro Serie (18.11.).
+- Workout-Tracker **sehr simpel**: nur Übung, Sätze, Wdh., Gewicht, Vergleich mit letztem Mal; Laufen nur km + Zeit (18.11.).
+- Chess.com/Strava-Anbindung besprochen, vorerst nicht gewollt (18.11.). Chess.com ginge über die öffentliche API nur mit Benutzernamen; Strava bräuchte OAuth, ein Strava-Abo und eine Vercel-Funktion für das Client-Secret.
 
 ## Testen
 Ohne echtes Supabase, mit nachgebautem Server und Playwright:
@@ -55,16 +104,18 @@ Ohne echtes Supabase, mit nachgebautem Server und Playwright:
 VITE_SUPABASE_OVERRIDE=true VITE_SUPABASE_URL=https://mock.supabase.co VITE_SUPABASE_ANON_KEY=testkey \
   npx vite build --outDir dist-mock --emptyOutDir
 mkdir -p tests/out
-node tests/e2e-sync.cjs dist-mock tests/out tests/beispiel-stundenplan.ics   # Login, Sync zwischen 2 Geräten, offline, Import, Abmelden
-node tests/e2e-email-link.cjs dist-mock                                     # abgelaufener und gültiger E-Mail-Link
-node tests/e2e-timeout.cjs dist-mock                                        # Server antwortet nicht → Hinweis statt Endlos-Laden
+node tests/e2e-sync.cjs dist-mock tests/out tests/beispiel-stundenplan.ics   # Login, Sync zwischen 2 Geräten, offline, Import, Abmelden → endet mit ERRORS []
+node tests/e2e-email-link.cjs dist-mock                                     # abgelaufener und gültiger E-Mail-Link → endet mit ERRORS []
+node tests/e2e-timeout.cjs dist-mock                                        # Server antwortet nicht → gibt "help: Fehlermeldung: …" aus (kein ERRORS-Zeile; Exit 0 = ok)
+npm run build
 ```
-Alle Ausgaben enden mit `ERRORS []`, wenn alles passt. Danach normal `npm run build` prüfen.
+- **Eigene Prüf-Skripte für neue Funktionen:** die ersten 40 Zeilen von `tests/e2e-sync.cjs` in eine Datei `tests/zz-….cjs` kopieren (enthält statischen Server auf Port 4173, Supabase-Attrappe mit `db`/`USER`, `mk(opts)` für neue Browser-Kontexte, `A` = Computer-Kontext 1280×860, `errors`, `sleep`), eigenen Ablauf anhängen, mit `})();` schließen, ausführen und **danach wieder löschen**. Handy: `mk({viewport:{width:390,height:844},hasTouch:true,isMobile:true})`. Login: `#a-mail` test@example.com, `#a-pw` `richtiges-pw`, `#a-submit`.
+- Die App rechnet mit dem echten heutigen Datum; Testtermine relativ dazu wählen. Standard-Kategorien-ids: `uni`, `ges`, `job` (Stufe 1), `lern` (2), `train`, `freunde` (3).
 
 ## Bekannte Grenzen / mögliche nächste Schritte
 - Planer prüft nur die angezeigte Woche.
 - .ics-Import ist einmalig (kein laufender Abgleich mit Google/Apple).
-- Gewohnheiten: Chess.com (öffentliche API, nur Benutzername) und Strava (OAuth, braucht Strava-Abo + Vercel-Funktion) als automatische Quellen wurden besprochen, Theo wollte vorerst nur das manuelle Abhaken (18.11.2026).
-- To-dos, nächste Schritte (mit Theo besprochen): Hinweis, wenn die Frist näher rückt und kein Zeitblock geplant ist; eingeplante, nicht abgehakte To-dos nach ihrer Zeit zurück in die Ablage. (Kleinkram-Kasten im Alltag ist umgesetzt, 18.11.2026.)
+- To-dos (besprochen, noch offen): Hinweis, wenn die Frist näher rückt und kein Zeitblock geplant ist; eingeplante, nicht abgehakte To-dos nach ihrer Zeit zurück in die Ablage.
+- Möglich: Fortschritts-Verlauf je Übung/Lauf (kleine Kurve), wenn Theo das möchte – vorher fragen, er will es simpel.
+- Der Knopf „+ Termin“ und der Konto-Kreis haben fast dasselbe Indigo wie Stufe 1; eine eigene Akzentfarbe (z. B. Anthrazit) wurde angeboten, Theo hat noch nicht entschieden.
 - Keine Push-Erinnerungen, keine ganztägigen oder mitternachtsübergreifenden Termine, Wegzeiten von Hand.
-- `app.js` ist groß; bei größeren Umbauen in Module aufteilen.
