@@ -213,7 +213,14 @@
       <form class="dialog wide" id="wform" novalidate>
         <h2 id="w-head">Workout</h2>
         <p class="lead" id="w-sub"></p>
-        <div id="w-list" class="wlist"></div>
+        <div id="w-gym" class="wgym">
+          <div id="w-list" class="wlist"></div>
+          <button type="button" class="btn wnewbtn" id="w-addex">+ Übung</button>
+          <div class="wnew" id="w-newex" hidden>
+            <input id="w-exname" placeholder="Name der Übung, z. B. Klimmzüge" autocomplete="off" enterkeyhint="done">
+            <button type="button" class="btn primary" id="w-exok">Hinzufügen</button>
+          </div>
+        </div>
         <div id="w-run" class="wrun" hidden>
           <div class="wlast" id="r-last"></div>
           <div class="wline">
@@ -244,7 +251,7 @@
           <li><b>Wiederkehrend</b> (↻): Beim Anlegen anhaken. Verschiebst du einen Termin einer Serie, gilt das nur für dieses eine Mal.</li>
           <li><b>Neuer Termin</b>: Tipp auf eine freie Stelle im Kalender – Tag und Uhrzeit sind dann schon eingetragen. Oder nimm den Knopf „+ Termin“.</li>
           <li><b>To-dos</b>: Aufgaben ohne feste Zeit kommen über „+ To-do“ in die Ablage „Zu erledigen“ – mit Dauer, Kategorie und optional „bis wann“. Zieh sie in den Kalender (grün = passt) oder tippe auf den Vorschlag, dann werden sie zum Termin. Mit ✓ hakst du sie direkt ab. Im Alltag-Modus siehst du kurze To-dos (unter 30 min) im Kasten „Kurz erledigen“ und kannst sie dort abhaken.</li>
-          <li><b>Krafttraining und Laufen</b>: Im Termin unter „Art des Termins“ Krafttraining oder Laufen wählen (an- und ausschalten unter Einstellungen → Tracker). Bei Krafttraining trägst du deine Übungen ein (eine pro Zeile). Dann Termin antippen → „Workout“ bzw. „Lauf eintragen“: pro Satz eine Zeile mit Wdh. und Gewicht (mit „+ Satz“ einen weiteren Satz anhängen, mit × einen entfernen) bzw. km und Zeit eintragen, darüber steht jeweils das letzte Mal. Speichern hakt den Termin ab.</li>
+          <li><b>Krafttraining und Laufen</b>: Im Termin unter „Art des Termins“ Krafttraining oder Laufen wählen (an- und ausschalten unter Einstellungen → Tracker). Bei Krafttraining trägst du deine Übungen ein (eine pro Zeile). Dann Termin antippen → „Workout“ bzw. „Lauf eintragen“: pro Satz eine Zeile mit Wdh. und Gewicht (mit „+ Satz“ einen weiteren Satz anhängen, mit × einen entfernen; „+ Übung“ fügt für dieses eine Workout eine weitere Übung hinzu) bzw. km und Zeit eintragen, darüber steht jeweils das letzte Mal. Speichern hakt den Termin ab.</li>
           <li><b>Gewohnheiten</b>: Eine ganze Kategorie (z. B. Training) wird zur Gewohnheit: im Termin-Fenster unter der Kategorie „… als Gewohnheit verfolgen“ anhaken oder unter Einstellungen → Kategorien verwalten. Alle Termine dieser Kategorie zählen zusammen. Im Alltag-Modus siehst du dann deine Serie und kannst mit „Heute abhaken“ erledigen. Jeden Termin kannst du außerdem antippen und als erledigt markieren. Die Serie zählt nur Tage, an denen ein Termin dieser Kategorie geplant ist – Ruhetage brechen sie also nicht.</li>
           <li><b>Rückgängig</b>: Nach jeder Änderung erscheint unten kurz „Rückgängig“ (am Computer auch Strg+Z).</li>
           <li>Jeden Termin kannst du auch direkt im Kalender verschieben, indem du ihn ziehst. Tippen öffnet ihn zum Bearbeiten.</li>

@@ -272,7 +272,7 @@ function lastSets(name,beforeDay){
   state.events.forEach(e=>{ if(!e.wlog) return;
     Object.entries(e.wlog).forEach(([occ,log])=>{ occ=+occ; const day=occDay(e,occ); if(day>=beforeDay) return;
       const k=Object.keys(log).find(x=>x.toLowerCase()===key); if(!k) return;
-      if(!best||day>best.day) best={day,sets:log[k]}; }); });
+      if(!best||day>best.day) best={day,name:k,sets:log[k]}; }); });
   return best;
 }
 function lastRun(beforeDay){
@@ -298,13 +298,21 @@ const wRow=(i,x)=>`<div class="wset"><span class="wno">${i+1}</span>
   <label class="wf"><span>Gewicht</span><input class="wkg" inputmode="decimal" value="${hasV(x.kg)?numTxt(x.kg):''}" placeholder="0"><em>kg</em></label>
   <button type="button" class="wdel" title="Satz entfernen" aria-label="Satz entfernen">×</button></div>`;
 const renumber=box=>box.querySelectorAll('.wset .wno').forEach((n,i)=>n.textContent=i+1);
+function wexHTML(name,cur,day){
+  const last=lastSets(name,day);
+  const sets=cur&&cur.length?cur:last?last.sets:[{reps:'',kg:''},{reps:'',kg:''},{reps:'',kg:''}];
+  const lastTxt=last?`Letztes Mal (${wd(last.day)} ${dtxt(last.day)}): ${gymTxt(last.sets)}`:'Noch kein früherer Eintrag.';
+  return `<div class="wex" data-name="${esc(name)}"><div class="wname">${esc(name)}</div><div class="wlast">${lastTxt}</div>
+    <div class="wsets">${sets.map((x,j)=>wRow(j,x)).join('')}</div>
+    <button type="button" class="linkbtn wadd">+ Satz</button></div>`;
+}
 let wInst=null;
 function openWorkout(inst){
   const s=state.events.find(x=>x.id===inst.sid); if(!s||!trackOn(s)) return; wInst=inst;
   const run=s.track==='run';
   $('w-head').textContent=run?`Lauf: ${s.title}`:`Workout: ${s.title}`;
   $('w-sub').textContent=`${wdl(inst.day)}, ${dtxt(inst.day)}`;
-  $('w-list').hidden=run; $('w-run').hidden=!run; $('r-err').hidden=true;
+  $('w-gym').hidden=run; $('w-run').hidden=!run; $('r-err').hidden=true;
   if(run){
     const cur=s.rlog&&s.rlog[inst.occ], last=lastRun(inst.day);
     $('r-last').textContent=last?`Letztes Mal (${wd(last.day)} ${dtxt(last.day)}): ${numTxt(last.km)} km in ${fmtDur(last.sec)} min · ${paceTxt(last.km,last.sec)}`:'Noch kein früherer Lauf.';
@@ -312,18 +320,27 @@ function openWorkout(inst){
     syncPace(); $('ov-workout').hidden=false; setTimeout(()=>$('r-km').focus(),0); return;
   }
   const cur=(s.wlog&&s.wlog[inst.occ])||{};
-  $('w-list').innerHTML=(s.exercises||[]).map((name,i)=>{
-    const last=lastSets(name,inst.day);
-    const sets=cur[name]&&cur[name].length?cur[name]:last?last.sets:[{reps:'',kg:''},{reps:'',kg:''},{reps:'',kg:''}];
-    const lastTxt=last?`Letztes Mal (${wd(last.day)} ${dtxt(last.day)}): ${gymTxt(last.sets)}`:'Noch kein früherer Eintrag.';
-    return `<div class="wex" data-ex="${i}"><div class="wname">${esc(name)}</div><div class="wlast">${lastTxt}</div>
-      <div class="wsets">${sets.map((x,j)=>wRow(j,x)).join('')}</div>
-      <button type="button" class="linkbtn wadd">+ Satz</button></div>`;}).join('')||'<p class="qnone">Trag im Termin unter „Übungen“ deine Übungen ein.</p>';
+  // Übungen des Termins plus Übungen, die nur bei diesem Workout dazukamen
+  const names=[...(s.exercises||[])]; Object.keys(cur).forEach(n=>{ if(!names.some(x=>x.toLowerCase()===n.toLowerCase())) names.push(n); });
+  $('w-list').innerHTML=names.map(name=>wexHTML(name,cur[name],inst.day)).join('');
+  $('w-gym').hidden=false; $('w-newex').hidden=true; $('w-exname').value='';
   $('ov-workout').hidden=false;
 }
 function syncPace(){$('r-err').hidden=true; const km=parseFloat($('r-km').value.replace(',','.')), sec=parseRunTime($('r-time').value); $('r-pace').textContent=paceTxt(km,sec)?'Tempo: '+paceTxt(km,sec):'';}
 $('r-km').addEventListener('input',syncPace); $('r-time').addEventListener('input',syncPace);
 $('w-cancel').onclick=()=>{$('ov-workout').hidden=true;};
+// „+ Übung“: weitere Übung nur für dieses Workout (dauerhaft: im Termin unter „Übungen“)
+$('w-addex').onclick=()=>{ $('w-newex').hidden=false; $('w-addex').hidden=true; $('w-exname').focus(); };
+function addExercise(){
+  let name=$('w-exname').value.trim().replace(/\s+/g,' '); if(!name){ $('w-exname').focus(); return; }
+  const known=lastSets(name,wInst.day); name=known?known.name:name[0].toUpperCase()+name.slice(1); // Schreibweise vom letzten Mal
+  const have=[...document.querySelectorAll('#w-list .wex')].find(b=>b.dataset.name.toLowerCase()===name.toLowerCase());
+  if(have){ have.querySelector('.wreps').focus(); }
+  else { $('w-list').insertAdjacentHTML('beforeend',wexHTML(name,null,wInst.day)); $('w-list').lastElementChild.querySelector('.wreps').focus(); }
+  $('w-exname').value=''; $('w-newex').hidden=true; $('w-addex').hidden=false;
+}
+$('w-exok').onclick=addExercise;
+$('w-exname').addEventListener('keydown',ev=>{ if(ev.key==='Enter'){ ev.preventDefault(); addExercise(); } if(ev.key==='Escape'){ ev.stopPropagation(); $('w-newex').hidden=true; $('w-addex').hidden=false; } });
 // „+ Satz“ übernimmt die Werte des letzten Satzes; × entfernt einen Satz
 $('w-list').addEventListener('click',ev=>{
   const add=ev.target.closest('.wadd'), del=ev.target.closest('.wdel'); if(!add&&!del) return;
@@ -345,7 +362,7 @@ $('wform').addEventListener('submit',ev=>{
     if(!Object.keys(s.rlog).length) delete s.rlog;
   } else {
     const log={};
-    (s.exercises||[]).forEach((name,i)=>{ const box=document.querySelector(`.wex[data-ex="${i}"]`); if(!box) return;
+    document.querySelectorAll('#w-list .wex').forEach(box=>{ const name=box.dataset.name;
       const n=el=>{const v=parseFloat(el.value.replace(',','.')); return isNaN(v)?'':v;};
       const sets=[...box.querySelectorAll('.wset')].map(r=>({reps:n(r.querySelector('.wreps')),kg:n(r.querySelector('.wkg'))}))
         .filter(x=>x.reps!==''||x.kg!=='');
