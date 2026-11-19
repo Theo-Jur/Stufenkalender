@@ -59,6 +59,7 @@
         <div class="topright">
           <button class="btn primary addbig plan-only" id="add" type="button" aria-label="Neuer Termin"><span class="plus" aria-hidden="true">+</span><span class="lbl">Termin</span></button>
           <button type="button" class="btn setbtn plan-only" id="setbtn" aria-haspopup="dialog"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span>Einstellungen</span></button>
+          <button type="button" class="infobtn progbtn" id="progbtn" aria-label="Fortschritt" title="Fortschritt"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 6-7"/></svg></button>
           <button type="button" class="infobtn" id="helpbtn" aria-label="So funktioniert's" title="So funktioniert's">i</button>
           <div class="modesw" role="group" aria-label="Modus">
             <button type="button" data-mode="plan" aria-pressed="true">Planen</button>
@@ -244,6 +245,15 @@
     </div>
 
     <!-- So funktioniert's -->
+    <!-- Fortschritt -->
+    <div class="overlay" id="ov-progress" hidden>
+      <div class="dialog wide progress" role="dialog" aria-modal="true" aria-labelledby="pg-title">
+        <div class="pghead"><h2 id="pg-title">Fortschritt</h2><button type="button" class="btn" id="pg-close">Schließen</button></div>
+        <div class="modesw pgtabs" id="pg-tabs" role="group" aria-label="Art"></div>
+        <div class="pglist" id="pg-list"></div>
+      </div>
+    </div>
+
     <div class="overlay" id="ov-help" hidden>
       <div class="dialog wide hint" role="dialog" aria-modal="true" aria-labelledby="help-title">
         <h2 id="help-title">So funktioniert's</h2>
@@ -260,7 +270,7 @@
           <li><b>Wiederkehrend</b> (↻): Beim Anlegen anhaken. Verschiebst du einen Termin einer Serie, gilt das nur für dieses eine Mal.</li>
           <li><b>Neuer Termin</b>: Tipp auf eine freie Stelle im Kalender – Tag und Uhrzeit sind dann schon eingetragen. Oder nimm den Knopf „+ Termin“.</li>
           <li><b>To-dos</b>: Aufgaben ohne feste Zeit kommen über „+ To-do“ in die Ablage „Zu erledigen“ – mit Dauer, Kategorie und optional „bis wann“. Zieh sie in den Kalender (grün = passt) oder tippe auf den Vorschlag, dann werden sie zum Termin. Mit ✓ hakst du sie direkt ab. Im Alltag-Modus siehst du kurze To-dos (unter 30 min) im Kasten „Kurz erledigen“ und kannst sie dort abhaken.</li>
-          <li><b>Krafttraining und Laufen</b>: Im Termin unter „Art des Termins“ Krafttraining, Laufen oder Sprint wählen (an- und ausschalten unter Einstellungen → Tracker). Bei Krafttraining trägst du deine Übungen ein (eine pro Zeile). Dann Termin antippen → „Workout“ bzw. „Lauf eintragen“: pro Satz eine Zeile mit Wdh. und Gewicht (mit „+ Satz“ einen weiteren Satz anhängen, mit × einen entfernen; „+ Übung“ fügt für dieses eine Workout eine weitere Übung hinzu) bzw. km und Zeit eintragen, darüber steht jeweils das letzte Mal. Beim Laufen kannst du die <b>Art des Laufs</b> angeben (z. B. Long Run, Recovery Run, 5 km) – verglichen wird dann mit dem letzten Lauf derselben Art. Bei <b>Sprint</b> trägst du die Übungen ein (eine pro Zeile, z. B. „4× 30 m Steigerung“ – die Zahl vorne wird beim ersten Mal als Satzzahl genommen). Über „Sprint abhaken“ hakst du jeden Satz einzeln ab; mit − und + änderst du die Zahl der Sätze, mit „+ Übung“ kommt während des Trainings eine Übung dazu. Speichern hakt den Termin ab.</li>
+          <li><b>Krafttraining und Laufen</b>: Im Termin unter „Art des Termins“ Krafttraining, Laufen oder Sprint wählen (an- und ausschalten unter Einstellungen → Tracker). Bei Krafttraining trägst du deine Übungen ein (eine pro Zeile). Dann Termin antippen → „Workout“ bzw. „Lauf eintragen“: pro Satz eine Zeile mit Wdh. und Gewicht (mit „+ Satz“ einen weiteren Satz anhängen, mit × einen entfernen; „+ Übung“ fügt für dieses eine Workout eine weitere Übung hinzu) bzw. km und Zeit eintragen, darüber steht jeweils das letzte Mal. Beim Laufen kannst du die <b>Art des Laufs</b> angeben (z. B. Long Run, Recovery Run, 5 km) – verglichen wird dann mit dem letzten Lauf derselben Art. Bei <b>Sprint</b> trägst du die Übungen ein (eine pro Zeile, z. B. „4× 30 m Steigerung“ – die Zahl vorne wird beim ersten Mal als Satzzahl genommen). Über „Sprint abhaken“ hakst du jeden Satz einzeln ab; mit − und + änderst du die Zahl der Sätze, mit „+ Übung“ kommt während des Trainings eine Übung dazu. Speichern hakt den Termin ab. Über das <b>Diagramm-Symbol</b> oben siehst du deinen <b>Fortschritt</b>: pro Übung das schwerste Gewicht (ohne Gewicht: die meisten Wdh.), pro Lauf-Art das Tempo, jeweils als Linie über die Zeit. Punkt antippen zeigt den Wert.</li>
           <li><b>Gewohnheiten</b>: Eine ganze Kategorie (z. B. Training) wird zur Gewohnheit: im Termin-Fenster unter der Kategorie „… als Gewohnheit verfolgen“ anhaken oder unter Einstellungen → Kategorien verwalten. Alle Termine dieser Kategorie zählen zusammen. Im Alltag-Modus siehst du dann deine Serie und kannst mit „Heute abhaken“ erledigen. Jeden Termin kannst du außerdem antippen und als erledigt markieren. Die Serie zählt nur Tage, an denen ein Termin dieser Kategorie geplant ist – Ruhetage brechen sie also nicht.</li>
           <li><b>Rückgängig</b>: Nach jeder Änderung erscheint unten kurz „Rückgängig“ (am Computer auch Strg+Z).</li>
           <li>Jeden Termin kannst du auch direkt im Kalender verschieben, indem du ihn ziehst. Tippen öffnet ihn zum Bearbeiten.</li>

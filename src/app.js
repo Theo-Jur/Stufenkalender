@@ -462,6 +462,88 @@ function trackSummary(e){
   if(e.track==='run'){const r=e.rlog&&e.rlog[e.occ]; return r?`${r.kind?esc(r.kind)+': ':''}${runTxt(r)}`:'';}
   const lg=e.wlog&&e.wlog[e.occ]; return lg?Object.entries(lg).map(([n,v])=>`${esc(n)}: ${gymTxt(v)}`).join('<br>'):'';
 }
+/* ---------- Fortschritt: ein Liniendiagramm pro Übung bzw. Lauf-Art ----------
+   Krafttraining: schwerstes Gewicht pro Training (ohne kg: meiste Wdh.). Laufen: Tempo pro Art (oben = schneller). */
+function progressData(){
+  const gym=new Map(), run=new Map();
+  const add=(m,key,name,day,pt)=>{ let g=m.get(key); if(!g){ g={name,last:-1e9,pts:[]}; m.set(key,g); } if(day>=g.last){ g.last=day; g.name=name; } g.pts.push({day,...pt}); };
+  state.events.forEach(e=>{
+    if(e.wlog) Object.entries(e.wlog).forEach(([occ,log])=>{ const day=occDay(e,+occ); if(day>TODAY) return;
+      Object.entries(log).forEach(([name,sets])=>{ if(!Array.isArray(sets)||!sets.length) return;
+        const kgs=sets.filter(x=>+x.kg>0), kg=kgs.length?Math.max(...kgs.map(x=>+x.kg)):0;
+        const repsAt=kg?Math.max(0,...kgs.filter(x=>+x.kg===kg).map(x=>+x.reps||0)):0, reps=Math.max(0,...sets.map(x=>+x.reps||0));
+        if(kg||reps) add(gym,name.toLowerCase(),name,day,{kg,repsAt,reps,n:sets.length}); }); });
+    if(e.rlog) Object.entries(e.rlog).forEach(([occ,r])=>{ const day=occDay(e,+occ); if(day>TODAY||!(r.km>0&&r.sec>0)) return;
+      const k=(r.kind||'').trim(); add(run,k.toLowerCase(),k||'Ohne Art',day,{km:r.km,sec:r.sec,v:r.sec/r.km}); });
+  });
+  const gyms=[...gym.values()].map(g=>{ const useKg=g.pts.some(p=>p.kg>0);
+    // pro Tag nur der beste Wert
+    const byDay=new Map(); g.pts.filter(p=>useKg?p.kg>0:p.reps>0).forEach(p=>{ const v=useKg?p.kg:p.reps, o=byDay.get(p.day); if(!o||v>o.v) byDay.set(p.day,{...p,v}); });
+    const pts=[...byDay.values()].sort((a,b)=>a.day-b.day);
+    return {name:g.name,last:g.last,unit:useKg?'kg':'Wdh.',caption:useKg?'Schwerstes Gewicht pro Training':'Meiste Wiederholungen pro Training',pts,
+      fmt:v=>useKg?numTxt(+v.toFixed(1))+' kg':v+' Wdh.',
+      tip:p=>useKg?`${numTxt(p.kg)} kg × ${p.repsAt||'–'} · ${p.n} ${p.n===1?'Satz':'Sätze'}`:`${p.reps} Wdh. · ${p.n} ${p.n===1?'Satz':'Sätze'}`}; });
+  const runs=[...run.values()].map(g=>({name:g.name,last:g.last,invert:true,caption:'Tempo pro Lauf (oben = schneller)',pts:g.pts.sort((a,b)=>a.day-b.day),
+      fmt:v=>fmtDur(v)+' min/km', tip:p=>runTxt(p)}));
+  const by=(a,b)=>b.last-a.last;
+  return {gym:gyms.filter(g=>g.pts.length).sort(by), run:runs.sort(by)};
+}
+// Schöne Achsenwerte (1, 2, 2,5, 5 × 10^n)
+function niceTicks(lo,hi,count){
+  const span=hi-lo||Math.abs(hi)||1, raw=span/count, mag=Math.pow(10,Math.floor(Math.log10(raw)));
+  const step=[1,2,2.5,5,10].map(m=>m*mag).find(x=>x>=raw)||10*mag;
+  const a=Math.floor(lo/step)*step, b=Math.ceil(hi/step)*step, out=[]; for(let v=a; v<=b+step/2; v+=step) out.push(+v.toFixed(6));
+  return out;
+}
+function chartSVG(g,W,sel){
+  const H=170, L=58, R=14, T=12, B=26, pts=g.pts;
+  let lo=Math.min(...pts.map(p=>p.v)), hi=Math.max(...pts.map(p=>p.v));
+  if(g.invert){ lo=Math.floor((lo-5)/15)*15; hi=Math.ceil((hi+5)/15)*15; } // Tempo: 15-s-Schritte
+  let ticks=g.invert?(()=>{ const st=Math.max(15,Math.ceil((hi-lo)/3/15)*15), o=[]; for(let v=lo; v<=hi+1; v+=st) o.push(v); return o; })()
+    :niceTicks(lo===hi?Math.max(0,lo-1):lo,lo===hi?hi+1:hi,3);
+  const y0=ticks[0], y1=ticks[ticks.length-1]||y0+1;
+  const d0=pts[0].day, d1=pts[pts.length-1].day;
+  const X=d=>d1===d0?L+(W-L-R)/2:L+(d-d0)/(d1-d0)*(W-L-R);
+  const Y=v=>{ const t=(v-y0)/((y1-y0)||1); return g.invert?T+t*(H-T-B):H-B-t*(H-T-B); };
+  const grid=ticks.map(v=>`<line x1="${L}" x2="${W-R}" y1="${Y(v)}" y2="${Y(v)}" class="pggrid"/><text x="${L-8}" y="${Y(v)+4}" class="pgax" text-anchor="end">${g.invert?fmtDur(v):numTxt(v)}</text>`).join('');
+  const line=pts.length>1?`<polyline class="pgline" points="${pts.map(p=>X(p.day)+','+Y(p.v)).join(' ')}"/>`:'';
+  const dots=pts.map((p,i)=>`<circle class="pgdot${i===sel?' sel':''}" cx="${X(p.day)}" cy="${Y(p.v)}" r="${i===sel?6:4}"/>`).join('');
+  const hits=pts.map((p,i)=>`<circle class="pghit" data-i="${i}" cx="${X(p.day)}" cy="${Y(p.v)}" r="16"><title>${wd(p.day)} ${dtxt(p.day)}: ${esc(g.tip(p))}</title></circle>`).join('');
+  const xl=`<text x="${X(d0)}" y="${H-6}" class="pgax" text-anchor="${pts.length>1?'start':'middle'}">${dtxt(d0)}</text>`+(pts.length>1?`<text x="${X(d1)}" y="${H-6}" class="pgax" text-anchor="end">${dtxt(d1)}</text>`:'');
+  return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(g.name)}: ${esc(g.caption)}">${grid}${xl}${line}${dots}${hits}</svg>`;
+}
+let pgTab=null, pgData=null; const pgSel={};
+function renderProgress(){
+  pgData=progressData(); const tabs=[['gym','Krafttraining'],['run','Laufen']].filter(([k])=>pgData[k].length);
+  if(!tabs.some(([k])=>k===pgTab)) pgTab=tabs.length?tabs[0][0]:null;
+  $('pg-tabs').hidden=tabs.length<2;
+  $('pg-tabs').innerHTML=tabs.map(([k,l])=>`<button type="button" data-pg="${k}" aria-pressed="${k===pgTab}">${l}</button>`).join('');
+  if(!pgTab){ $('pg-list').innerHTML='<p class="qnone">Noch keine Einträge. Sobald du ein Workout oder einen Lauf einträgst, siehst du hier deinen Verlauf.</p>'; return; }
+  const W=Math.max(260,Math.min(580,$('pg-list').clientWidth-26));
+  $('pg-list').innerHTML=pgData[pgTab].map((g,gi)=>{
+    const key=pgTab+gi, n=g.pts.length, sel=Math.min(pgSel[key]??n-1,n-1), p=g.pts[sel], first=g.pts[0], last=g.pts[n-1];
+    let delta='';
+    if(n>1){ const d=last.v-first.v;
+      if(g.invert){ const s=Math.round(-d); delta=s===0?'gleiches Tempo wie am Anfang':`${fmtDur(Math.abs(s)).replace(/^0:/,'')}${Math.abs(s)<60?' s':' min'}/km ${s>0?'schneller':'langsamer'} als am ${dtxt(first.day)}`; }
+      else delta=d===0?`gleich wie am ${dtxt(first.day)}`:`${d>0?'+':'−'}${g.unit==='kg'?numTxt(+Math.abs(d).toFixed(1))+' kg':Math.abs(d)+' Wdh.'} seit ${dtxt(first.day)}`; }
+    return `<section class="pgcard" data-g="${gi}">
+      <div class="pgtop"><div><div class="pgname">${esc(g.name)}</div><div class="pgcap">${g.caption}</div></div>
+        <div class="pgnow"><div class="pgval">${g.fmt(last.v)}</div>${delta?`<div class="pgdelta">${delta}</div>`:''}</div></div>
+      <div class="pgread">${wd(p.day)} ${dtxt(p.day)}: ${esc(g.tip(p))}</div>
+      <div class="pgchart">${chartSVG(g,W,sel)}</div>
+      ${n===1?'<div class="pgcap">Ab dem nächsten Eintrag siehst du hier eine Linie.</div>':''}
+    </section>`; }).join('');
+}
+$('progbtn').onclick=()=>{ $('ov-progress').hidden=false; renderProgress(); setTimeout(()=>$('pg-close').focus({preventScroll:true}),0); };
+$('pg-close').onclick=()=>{ $('ov-progress').hidden=true; $('progbtn').focus(); };
+$('pg-tabs').addEventListener('click',ev=>{ const b=ev.target.closest('[data-pg]'); if(!b) return; pgTab=b.dataset.pg; renderProgress(); $('ov-progress').querySelector('.dialog').scrollTop=0; });
+// Punkt antippen oder mit der Maus darüberfahren = Wert oben anzeigen
+const pgPick=ev=>{ const h=ev.target.closest('.pghit'); if(!h) return; const gi=h.closest('.pgcard').dataset.g, k=pgTab+gi, i=+h.dataset.i;
+  if(pgSel[k]===i&&ev.type!=='click') return; pgSel[k]=i; const g=pgData[pgTab][gi], p=g.pts[i], card=h.closest('.pgcard');
+  card.querySelector('.pgread').textContent=`${wd(p.day)} ${dtxt(p.day)}: ${g.tip(p)}`;
+  card.querySelectorAll('.pgdot').forEach((c,j)=>{ c.classList.toggle('sel',j===i); c.setAttribute('r',j===i?6:4); }); };
+$('pg-list').addEventListener('click',pgPick); $('pg-list').addEventListener('pointerover',pgPick);
+window.addEventListener('resize',()=>{ if(!$('ov-progress').hidden) renderProgress(); });
 let EV=[];
 const seriesOf=iid=>state.events.find(x=>x.id===(EV.find(i=>i.id===iid)||{}).sid);
 // Einen einzelnen Termin verschieben: bei Serien nur dieses eine Mal (Ausnahme)
@@ -1485,8 +1567,8 @@ $('pform').addEventListener('submit',ev=>{
 });
 
 /* Dialoge schließen */
-['ov-ev','ov-cat','ov-sleep','ov-place','ov-prop','ov-detail','ov-import','ov-help','ov-settings','ov-todo','ov-workout'].forEach(id=>$(id).addEventListener('click',ev=>{if(ev.target.id===id) $(id).hidden=true;}));
-document.addEventListener('keydown',ev=>{if(ev.key==='Escape'){['ov-ev','ov-cat','ov-sleep','ov-place','ov-prop','ov-detail','ov-import','ov-help','ov-settings','ov-todo','ov-workout'].forEach(id=>$(id).hidden=true);}});
+['ov-ev','ov-cat','ov-sleep','ov-place','ov-prop','ov-detail','ov-import','ov-help','ov-settings','ov-todo','ov-workout','ov-progress'].forEach(id=>$(id).addEventListener('click',ev=>{if(ev.target.id===id) $(id).hidden=true;}));
+document.addEventListener('keydown',ev=>{if(ev.key==='Escape'){['ov-ev','ov-cat','ov-sleep','ov-place','ov-prop','ov-detail','ov-import','ov-help','ov-settings','ov-todo','ov-workout','ov-progress'].forEach(id=>$(id).hidden=true);}});
 
 let savedMode='plan'; try{savedMode=localStorage.getItem(KEY+'-mode')||'plan';}catch(e){}
 setMode(savedMode);

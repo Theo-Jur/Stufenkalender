@@ -587,3 +587,26 @@ aside{position:sticky;top:12px}
 .trackset .lbl{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
 .trackset .themerow small{display:block;font-size:12px;color:var(--muted);font-weight:400}
 #ov-detail .dfoot .dels{display:flex;gap:8px;flex-wrap:wrap}
+
+/* Fortschritt */
+.progbtn svg{display:block}
+.dialog.progress{max-width:640px}
+.pghead{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.pghead h2{margin:0}
+.pgtabs{align-self:flex-start}
+.pglist{display:flex;flex-direction:column;gap:12px}
+.pgcard{border:1px solid var(--line);border-radius:12px;padding:12px 12px 6px;display:flex;flex-direction:column;gap:6px}
+.pgtop{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.pgname{font-weight:700;font-size:15.5px}
+.pgcap{font-size:12.5px;color:var(--muted)}
+.pgnow{text-align:right;flex:none}
+.pgval{font-size:18px;font-weight:700;font-variant-numeric:tabular-nums}
+.pgdelta{font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.pgread{font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;min-height:18px}
+.pgchart svg{display:block;max-width:100%;overflow:visible}
+.pggrid{stroke:var(--line);stroke-width:1}
+.pgax{fill:var(--muted);font-size:11px;font-variant-numeric:tabular-nums;font-family:inherit}
+.pgline{fill:none;stroke:var(--fg);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+.pgdot{fill:var(--fg);stroke:var(--surface);stroke-width:2}
+.pgdot.sel{stroke-width:2.5}
+.pghit{fill:transparent;cursor:pointer}
