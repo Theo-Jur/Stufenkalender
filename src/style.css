@@ -624,3 +624,7 @@ aside{position:sticky;top:12px}
 .recbox.checks .check input{width:18px;height:18px;margin:0;flex:none}
 .recbox.checks .recopts{padding:2px 0 4px 26px}
 .catinfo:empty{display:none}
+/* Heutiger Tag: Kopf + Spalte zusammen in Akzentfarbe umrahmt (über Terminen, nicht anklickbar) */
+.dh.today::after,.col.today::after{content:"";position:absolute;inset:0;border:2px solid var(--accent);pointer-events:none;z-index:6}
+.dh.today::after{border-bottom:0}
+.col.today::after{border-top:0}
