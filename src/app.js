@@ -1018,7 +1018,7 @@ function fillCatSelect(sel){
 }
 function syncCat(){const c=state.cats.find(x=>x.id===$('f-cat').value); if(!c) return; $('f-lockrow').hidden=c.tier===1;
   $('f-catinfo').textContent=`Stufe ${c.tier} · ${TIERS[c.tier].name}: ${TIERS[c.tier].rule}`;
-  $('f-habit').checked=!!c.habit; $('f-habittxt').textContent=`„${c.name}“ als Gewohnheit verfolgen (alle Termine dieser Kategorie zählen zusammen)`;}
+  $('f-habit').checked=!!c.habit; }
 $('f-cat').addEventListener('change',syncCat);
 function fillLocSelect(sel){
   $('f-loc').innerHTML='<option value="">Kein Ort</option>'+state.places.map(p=>`<option value="${p.id}">${esc(p.name)}${p.id===state.home?' (Zuhause)':''}</option>`).join('')+'<option value="__new">+ Neuer Ort …</option>';
@@ -1065,7 +1065,7 @@ function syncDur(){
   if(d==null||t==null||d<=0){el.textContent='';return;}
   el.textContent=t+d>END?`Ende nach Mitternacht`:`Ende ${fmt(t+d)}`; el.classList.toggle('bad',t+d>END);
 }
-$('f-durchips').addEventListener('click',ev=>{const b=ev.target.closest('[data-dur]'); if(b) setDur(+b.dataset.dur);});
+
 ['f-durh','f-durm','f-time'].forEach(id=>$(id).addEventListener('input',syncDur));
 const closeForm=()=>{$('ov-ev').hidden=true;};
 $('f-cancel').onclick=closeForm;

@@ -271,7 +271,7 @@
           <li><b>Neuer Termin</b>: Tipp auf eine freie Stelle im Kalender – Tag und Uhrzeit sind dann schon eingetragen. Oder nimm den Knopf „+ Termin“.</li>
           <li><b>To-dos</b>: Aufgaben ohne feste Zeit kommen über „+ To-do“ in die Ablage „Zu erledigen“ – mit Dauer, Kategorie und optional „bis wann“. Zieh sie in den Kalender (grün = passt) oder tippe auf den Vorschlag, dann werden sie zum Termin. Mit ✓ hakst du sie direkt ab. Im Alltag-Modus siehst du kurze To-dos (unter 30 min) im Kasten „Kurz erledigen“ und kannst sie dort abhaken.</li>
           <li><b>Krafttraining und Laufen</b>: Im Termin unter „Art des Termins“ Krafttraining, Laufen oder Sprint wählen (an- und ausschalten unter Einstellungen → Tracker). Bei Krafttraining trägst du deine Übungen ein (eine pro Zeile). Dann Termin antippen → „Workout“ bzw. „Lauf eintragen“: pro Satz eine Zeile mit Wdh. und Gewicht (mit „+ Satz“ einen weiteren Satz anhängen, mit × einen entfernen; „+ Übung“ fügt für dieses eine Workout eine weitere Übung hinzu) bzw. km und Zeit eintragen, darüber steht jeweils das letzte Mal. Beim Laufen kannst du die <b>Art des Laufs</b> angeben (z. B. Long Run, Recovery Run, 5 km) – verglichen wird dann mit dem letzten Lauf derselben Art. Bei <b>Sprint</b> trägst du die Übungen ein (eine pro Zeile, z. B. „4× 30 m Steigerung“ – die Zahl vorne wird beim ersten Mal als Satzzahl genommen). Über „Sprint abhaken“ hakst du jeden Satz einzeln ab; mit − und + änderst du die Zahl der Sätze, mit „+ Übung“ kommt während des Trainings eine Übung dazu. Speichern hakt den Termin ab. Über das <b>Diagramm-Symbol</b> oben siehst du deinen <b>Fortschritt</b>: pro Übung das schwerste Gewicht (ohne Gewicht: die meisten Wdh.), pro Lauf-Art das Tempo, jeweils als Linie über die Zeit. Punkt antippen zeigt den Wert.</li>
-          <li><b>Gewohnheiten</b>: Eine ganze Kategorie (z. B. Training) wird zur Gewohnheit: im Termin-Fenster unter der Kategorie „… als Gewohnheit verfolgen“ anhaken oder unter Einstellungen → Kategorien verwalten. Alle Termine dieser Kategorie zählen zusammen. Im Alltag-Modus siehst du dann deine Serie und kannst mit „Heute abhaken“ erledigen. Jeden Termin kannst du außerdem antippen und als erledigt markieren. Die Serie zählt nur Tage, an denen ein Termin dieser Kategorie geplant ist – Ruhetage brechen sie also nicht.</li>
+          <li><b>Gewohnheiten</b>: Eine ganze Kategorie (z. B. Training) wird zur Gewohnheit: im Termin-Fenster „Gewohnheit verfolgen“ anhaken (gilt für die ganze Kategorie des Termins) oder unter Einstellungen → Kategorien verwalten. Alle Termine dieser Kategorie zählen zusammen. Im Alltag-Modus siehst du dann deine Serie und kannst mit „Heute abhaken“ erledigen. Jeden Termin kannst du außerdem antippen und als erledigt markieren. Die Serie zählt nur Tage, an denen ein Termin dieser Kategorie geplant ist – Ruhetage brechen sie also nicht.</li>
           <li><b>Rückgängig</b>: Nach jeder Änderung erscheint unten kurz „Rückgängig“ (am Computer auch Strg+Z).</li>
           <li>Jeden Termin kannst du auch direkt im Kalender verschieben, indem du ihn ziehst. Tippen öffnet ihn zum Bearbeiten.</li>
           <li><b>Festgeschrieben</b> (Schloss) sind Termine kurz vor ihrem Beginn, vergangene Termine und alles, was du selbst festschreibst. Sie bewegen sich nicht mehr.</li>
@@ -296,10 +296,9 @@
     <div class="overlay" id="ov-ev" hidden>
       <form class="dialog" id="form" novalidate>
         <h2 id="f-head">Neuer Termin</h2>
-        <div class="field"><label for="f-title">Titel</label><input id="f-title" autocomplete="off" placeholder="z. B. Training, Klausur, Treffen mit Lea"></div>
+        <div class="field"><label for="f-title">Titel</label><input id="f-title" autocomplete="off"></div>
         <div class="field"><label for="f-cat">Kategorie</label><select id="f-cat"></select>
-          <span class="catinfo" id="f-catinfo"></span>
-          <label class="check" for="f-habit"><input type="checkbox" id="f-habit"> <span id="f-habittxt">Als Gewohnheit verfolgen</span></label></div>
+          <span class="catinfo" id="f-catinfo"></span></div>
         <div class="field"><label for="f-loc">Ort</label><select id="f-loc"></select>
           <span class="catinfo" id="f-locinfo"></span></div>
         <div class="row2" id="f-newloc" hidden>
@@ -316,13 +315,8 @@
             <label class="durin" for="f-durm"><input type="number" id="f-durm" min="0" max="59" step="5" value="0" inputmode="numeric"><span>Min.</span></label>
             <span class="durend" id="f-durend"></span>
           </div>
-          <div class="durchips" id="f-durchips">
-            <button type="button" data-dur="30">30 min</button><button type="button" data-dur="60">1 h</button><button type="button" data-dur="90">1,5 h</button>
-            <button type="button" data-dur="120">2 h</button><button type="button" data-dur="180">3 h</button><button type="button" data-dur="240">4 h</button>
-            <button type="button" data-dur="360">6 h</button><button type="button" data-dur="480">8 h</button>
-          </div>
         </div>
-        <div class="recbox">
+        <div class="recbox checks">
           <label class="check" for="f-rec"><input type="checkbox" id="f-rec"> Wiederkehrender Termin</label>
           <div class="recopts" id="f-recopts" hidden>
             <div class="row2">
@@ -334,15 +328,16 @@
               <div class="wdpick" role="group" aria-labelledby="f-wdlbl" id="f-wd"></div></div>
             <span class="catinfo" id="f-recinfo"></span>
           </div>
+          <label class="check" for="f-locked" id="f-lockrow"><input type="checkbox" id="f-locked"> Festschreiben</label>
+          <label class="check" for="f-habit"><input type="checkbox" id="f-habit"> <span id="f-habittxt">Gewohnheit verfolgen</span></label>
         </div>
         <div class="field"><label for="f-note">Bemerkung</label>
-          <textarea id="f-note" rows="3" maxlength="1000" placeholder="z. B. Raum S14, Hörsaal C · oder dein Trainingsplan: 3×10 Kniebeugen, 3×8 Bankdrücken …"></textarea></div>
+          <textarea id="f-note" rows="3" maxlength="1000"></textarea></div>
         <div class="field" id="f-trackrow"><label for="f-track">Art des Termins</label>
           <select id="f-track"><option value="">Normaler Termin</option><option value="gym">Krafttraining</option><option value="run">Laufen</option><option value="sprint">Sprint</option></select>
           <span class="catinfo" id="f-trackinfo"></span></div>
         <div class="field" id="f-exrow" hidden><label for="f-ex">Übungen (eine pro Zeile)</label>
           <textarea id="f-ex" rows="4" maxlength="1000" placeholder="Kniebeugen&#10;Bankdrücken&#10;Rudern"></textarea></div>
-        <label class="check" for="f-locked" id="f-lockrow"><input type="checkbox" id="f-locked"> Festschreiben: nicht mehr automatisch verschieben</label>
         <p class="err" id="f-err" hidden></p>
         <div class="dfoot">
           <div class="dels">

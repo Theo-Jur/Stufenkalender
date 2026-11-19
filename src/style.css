@@ -610,3 +610,9 @@ aside{position:sticky;top:12px}
 .pgdot{fill:var(--fg);stroke:var(--surface);stroke-width:2}
 .pgdot.sel{stroke-width:2.5}
 .pghit{fill:transparent;cursor:pointer}
+
+/* Termin-Fenster: Häkchen gesammelt in einem Kasten */
+.recbox.checks{gap:12px}
+.recbox.checks .check{font-size:14px}
+.recbox.checks .check input{width:18px;height:18px;margin:0;flex:none}
+.recbox.checks .recopts{padding:2px 0 4px 26px}
