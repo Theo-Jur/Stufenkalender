@@ -549,6 +549,13 @@ aside{position:sticky;top:12px}
 .wf input{width:84px;font-size:18px;font-weight:600;text-align:right;border:1px solid var(--line-strong);background:var(--bg);border-radius:8px;padding:9px 10px;color:var(--fg);font-variant-numeric:tabular-nums}
 .wf em{position:absolute;right:-26px;bottom:11px;font-style:normal;font-size:13px;color:var(--muted)}
 .wf:has(em){margin-right:26px}
+.wsets{display:flex;flex-direction:column;gap:6px}
+.wset{display:flex;align-items:flex-end;gap:12px}
+.wset .wno{width:22px;flex:none;align-self:flex-end;padding-bottom:11px;font-size:13px;font-weight:700;color:var(--muted);text-align:center;font-variant-numeric:tabular-nums}
+.wset + .wset .wf span{display:none}
+.wdel{margin-left:auto;flex:none;width:36px;height:40px;border:0;background:transparent;color:var(--muted);font-size:22px;line-height:1;border-radius:8px;cursor:pointer}
+.wdel:hover{background:var(--line);color:var(--fg)}
+.wadd{align-self:flex-start;font-size:14px;font-weight:600;padding:4px 0}
 .wrun{display:flex;flex-direction:column;gap:10px}
 .wrun .wf input{width:110px}
 .rpace{font-size:14px;font-weight:600}

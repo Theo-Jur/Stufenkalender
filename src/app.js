@@ -53,9 +53,12 @@ function normalize(s){
   if(!st.trackers) st.trackers={gym:true,run:true};
   st.events.forEach(e=>{
     if(e.exercises&&!e.track) e.track='gym';
-    // frühere Workout-Einträge (Liste einzelner Sätze) in Sätze/Wdh./Gewicht umrechnen
-    if(e.wlog) Object.values(e.wlog).forEach(log=>Object.keys(log).forEach(k=>{ const v=log[k]; if(Array.isArray(v)){
-      const f=v.find(x=>x.kg!==''||x.reps!=='')||{}; log[k]={sets:v.length,reps:f.reps??'',kg:f.kg??''}; } }));
+    // Workout-Einträge: jetzt eine Liste einzelner Sätze [{reps,kg}].
+    // Ältere Einträge {sets,reps,kg} werden in entsprechend viele gleiche Sätze umgerechnet.
+    if(e.wlog) Object.values(e.wlog).forEach(log=>Object.keys(log).forEach(k=>{ const v=log[k];
+      if(Array.isArray(v)){ log[k]=v.map(x=>({reps:x&&x.reps!=null?x.reps:'',kg:x&&x.kg!=null?x.kg:''})); return; }
+      if(v&&typeof v==='object'){ const n=Math.max(1,Math.min(20,parseInt(v.sets)||1));
+        log[k]=Array.from({length:n},()=>({reps:v.reps??'',kg:v.kg??''})); } else delete log[k]; }));
   });
   return st;
 }
@@ -259,7 +262,7 @@ function openTodo(tid){
 function syncTodoCat(){const c=state.cats.find(x=>x.id===$('t-cat').value); if(c) $('t-catinfo').textContent=`Stufe ${c.tier} · ${TIERS[c.tier].name}: ${TIERS[c.tier].rule}`;}
 /* ---------- Tracker: Krafttraining und Laufen ----------
    event.track = 'gym' | 'run' (Art des Termins), an/aus über state.trackers {gym,run}.
-   Krafttraining: event.exercises = ['Kniebeugen', …], event.wlog = {[Vorkommen]: {[Übung]: {sets,reps,kg}}}.
+   Krafttraining: event.exercises = ['Kniebeugen', …], event.wlog = {[Vorkommen]: {[Übung]: [{reps,kg}, …]}} (ein Eintrag pro Satz).
    Laufen: event.rlog = {[Vorkommen]: {km, sec}}. „Letztes Mal“ = jüngster Eintrag davor (egal welche Serie). */
 const numTxt=n=>String(n).replace('.',',');
 const trackOn=e=>!!(e&&e.track&&state.trackers&&state.trackers[e.track]);
@@ -269,7 +272,7 @@ function lastSets(name,beforeDay){
   state.events.forEach(e=>{ if(!e.wlog) return;
     Object.entries(e.wlog).forEach(([occ,log])=>{ occ=+occ; const day=occDay(e,occ); if(day>=beforeDay) return;
       const k=Object.keys(log).find(x=>x.toLowerCase()===key); if(!k) return;
-      if(!best||day>best.day) best={day,...log[k]}; }); });
+      if(!best||day>best.day) best={day,sets:log[k]}; }); });
   return best;
 }
 function lastRun(beforeDay){
@@ -284,7 +287,17 @@ function parseRunTime(t){ t=(t||'').trim().replace(',','.'); if(!t) return null;
   const p=t.split(':').map(Number); if(p.some(isNaN)) return null;
   if(p.length===2) return p[0]*60+p[1]; if(p.length===3) return p[0]*3600+p[1]*60+p[2]; return null; }
 const paceTxt=(km,sec)=>km>0&&sec>0?fmtDur(sec/km)+' min/km':'';
-const gymTxt=v=>`${v.sets||'–'} × ${v.reps||'–'}${v.kg!==''&&v.kg!=null?' · '+numTxt(v.kg)+' kg':''}`;
+const hasV=x=>x!==''&&x!=null;
+const setTxt=x=>hasV(x.kg)?`${numTxt(x.kg)} kg × ${hasV(x.reps)?x.reps:'–'}`:`${hasV(x.reps)?x.reps:'–'} Wdh.`;
+// Kurzfassung einer Übung: gleiche Sätze zusammengefasst („3 Sätze · 60 kg × 10“), sonst jeder Satz einzeln
+function gymTxt(sets){ sets=sets||[]; if(!sets.length) return '–';
+  const same=sets.every(x=>String(x.reps)===String(sets[0].reps)&&String(x.kg)===String(sets[0].kg));
+  return same?`${sets.length} ${sets.length===1?'Satz':'Sätze'} · ${setTxt(sets[0])}`:sets.map(setTxt).join(' · '); }
+const wRow=(i,x)=>`<div class="wset"><span class="wno">${i+1}</span>
+  <label class="wf"><span>Wdh.</span><input class="wreps" inputmode="numeric" value="${hasV(x.reps)?x.reps:''}" placeholder="0"></label>
+  <label class="wf"><span>Gewicht</span><input class="wkg" inputmode="decimal" value="${hasV(x.kg)?numTxt(x.kg):''}" placeholder="0"><em>kg</em></label>
+  <button type="button" class="wdel" title="Satz entfernen" aria-label="Satz entfernen">×</button></div>`;
+const renumber=box=>box.querySelectorAll('.wset .wno').forEach((n,i)=>n.textContent=i+1);
 let wInst=null;
 function openWorkout(inst){
   const s=state.events.find(x=>x.id===inst.sid); if(!s||!trackOn(s)) return; wInst=inst;
@@ -300,20 +313,26 @@ function openWorkout(inst){
   }
   const cur=(s.wlog&&s.wlog[inst.occ])||{};
   $('w-list').innerHTML=(s.exercises||[]).map((name,i)=>{
-    const last=lastSets(name,inst.day), v=cur[name]||last||{sets:'',reps:'',kg:''};
-    const lastTxt=last?`Letztes Mal (${wd(last.day)} ${dtxt(last.day)}): ${gymTxt(last)}`:'Noch kein früherer Eintrag.';
-    const kg=v.kg!==''&&v.kg!=null?numTxt(v.kg):'';
+    const last=lastSets(name,inst.day);
+    const sets=cur[name]&&cur[name].length?cur[name]:last?last.sets:[{reps:'',kg:''},{reps:'',kg:''},{reps:'',kg:''}];
+    const lastTxt=last?`Letztes Mal (${wd(last.day)} ${dtxt(last.day)}): ${gymTxt(last.sets)}`:'Noch kein früherer Eintrag.';
     return `<div class="wex" data-ex="${i}"><div class="wname">${esc(name)}</div><div class="wlast">${lastTxt}</div>
-      <div class="wline">
-        <label class="wf"><span>Sätze</span><input class="wsets" inputmode="numeric" value="${v.sets??''}" placeholder="0"></label>
-        <label class="wf"><span>Wdh.</span><input class="wreps" inputmode="numeric" value="${v.reps??''}" placeholder="0"></label>
-        <label class="wf"><span>Gewicht</span><input class="wkg" inputmode="decimal" value="${kg}" placeholder="0"><em>kg</em></label>
-      </div></div>`;}).join('')||'<p class="qnone">Trag im Termin unter „Übungen“ deine Übungen ein.</p>';
+      <div class="wsets">${sets.map((x,j)=>wRow(j,x)).join('')}</div>
+      <button type="button" class="linkbtn wadd">+ Satz</button></div>`;}).join('')||'<p class="qnone">Trag im Termin unter „Übungen“ deine Übungen ein.</p>';
   $('ov-workout').hidden=false;
 }
 function syncPace(){$('r-err').hidden=true; const km=parseFloat($('r-km').value.replace(',','.')), sec=parseRunTime($('r-time').value); $('r-pace').textContent=paceTxt(km,sec)?'Tempo: '+paceTxt(km,sec):'';}
 $('r-km').addEventListener('input',syncPace); $('r-time').addEventListener('input',syncPace);
 $('w-cancel').onclick=()=>{$('ov-workout').hidden=true;};
+// „+ Satz“ übernimmt die Werte des letzten Satzes; × entfernt einen Satz
+$('w-list').addEventListener('click',ev=>{
+  const add=ev.target.closest('.wadd'), del=ev.target.closest('.wdel'); if(!add&&!del) return;
+  const box=ev.target.closest('.wex').querySelector('.wsets');
+  if(add){ const rows=box.querySelectorAll('.wset'), l=rows[rows.length-1];
+    const x=l?{reps:l.querySelector('.wreps').value,kg:l.querySelector('.wkg').value}:{reps:'',kg:''};
+    box.insertAdjacentHTML('beforeend',wRow(rows.length,x)); box.lastElementChild.querySelector('.wreps').focus(); }
+  else { del.closest('.wset').remove(); renumber(box); }
+});
 $('wform').addEventListener('submit',ev=>{
   ev.preventDefault(); const inst=wInst; const s=inst&&state.events.find(x=>x.id===inst.sid); if(!s) return;
   let saved=false;
@@ -327,8 +346,10 @@ $('wform').addEventListener('submit',ev=>{
   } else {
     const log={};
     (s.exercises||[]).forEach((name,i)=>{ const box=document.querySelector(`.wex[data-ex="${i}"]`); if(!box) return;
-      const n=x=>{const v=parseFloat(box.querySelector(x).value.replace(',','.')); return isNaN(v)?'':v;};
-      const v={sets:n('.wsets'),reps:n('.wreps'),kg:n('.wkg')}; if(v.sets!==''||v.reps!==''||v.kg!=='') log[name]=v; });
+      const n=el=>{const v=parseFloat(el.value.replace(',','.')); return isNaN(v)?'':v;};
+      const sets=[...box.querySelectorAll('.wset')].map(r=>({reps:n(r.querySelector('.wreps')),kg:n(r.querySelector('.wkg'))}))
+        .filter(x=>x.reps!==''||x.kg!=='');
+      if(sets.length) log[name]=sets; });
     s.wlog=s.wlog||{}; if(Object.keys(log).length){ s.wlog[inst.occ]=log; saved=true; } else delete s.wlog[inst.occ];
     if(!Object.keys(s.wlog).length) delete s.wlog;
   }
@@ -1015,7 +1036,7 @@ function syncTrack(){
   $('f-trackrow').hidden=!any&&!cur;
   [...$('f-track').options].forEach(o=>{ if(o.value) o.hidden=!tr[o.value]&&o.value!==cur; });
   $('f-exrow').hidden=cur!=='gym';
-  $('f-trackinfo').textContent=cur==='gym'?'Beim Termin kannst du dann „Workout“ antippen und Sätze, Wdh. und Gewicht eintragen.':cur==='run'?'Beim Termin kannst du dann „Lauf eintragen“ antippen und km und Zeit eintragen.':'';
+  $('f-trackinfo').textContent=cur==='gym'?'Beim Termin kannst du dann „Workout“ antippen und für jeden Satz Wdh. und Gewicht eintragen.':cur==='run'?'Beim Termin kannst du dann „Lauf eintragen“ antippen und km und Zeit eintragen.':'';
 }
 $('f-track').addEventListener('change',syncTrack);
 function syncTrackers(){ $('tr-gym').checked=!!state.trackers.gym; $('tr-run').checked=!!state.trackers.run; }
