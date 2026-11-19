@@ -50,8 +50,8 @@ Stand: 19.11.2026 (abends). Diese Notiz soll reichen, um in einem neuen Chat ohn
 - **Tracker** (an/aus unter Einstellungen, `state.trackers`): im Termin-Fenster „Art des Termins“ = Normal / Krafttraining / Laufen / Sprint.
   - Krafttraining: Übungen eine pro Zeile; Workout-Fenster mit **einer Zeile pro Satz: Wdh. / Gewicht** (Nummer vorne, × entfernt den Satz, „+ Satz“ hängt einen an und übernimmt die Werte des letzten Satzes), darüber „Letztes Mal“ (gleiche Sätze zusammengefasst „3 Sätze · 60 kg × 10“, sonst einzeln), Zeilen damit vorausgefüllt (`lastSets`), ohne Vorgeschichte 3 leere Zeilen. Leere Zeilen werden nicht gespeichert. Unten „+ Übung“: Name eingeben → zusätzliche Übung **nur für dieses Workout** (steht nur in `wlog`, nicht in `exercises`; beim erneuten Öffnen werden Übungen aus `wlog` mit angezeigt; Schreibweise vom letzten Mal wird übernommen, sonst erster Buchstabe groß). Gespeichert wird je `.wex[data-name]`. Bewusst sehr simpel halten.
   - Laufen: **Art des Laufs** (freies Feld + Knöpfe mit bisher benutzten Arten, aufgefüllt mit Long Run / Recovery Run / 3 km / 5 km, `runKinds`; vorausgefüllt mit der Art vom letzten Lauf desselben Termins; nochmal tippen = abwählen; Schreibweise vom bisherigen Eintrag wird übernommen), km + Zeit (`mm:ss`, `h:mm:ss` oder nur Minuten, `parseRunTime`), Tempo min/km. „Letzter …“ (`lastRun(day, kind)`) = jüngster Lauf derselben Art (ohne Art: jüngster Lauf überhaupt, egal welche Serie); dazu Tempo-Vergleich „x s/km schneller/langsamer als letztes Mal“ (`syncRun`). Detail-Fenster zeigt „Art: km in Zeit · Tempo“.
-  - Sprint: Übungen eine pro Zeile (gleiches Feld `f-ex` wie Krafttraining); Knopf „Sprint abhaken“ öffnet eine **Liste zum Abhaken** (`#w-sprint`, `#s-list`, Zähler „x von y erledigt“), sonst nichts. Detail-Fenster zeigt „x von y erledigt: …“.
-  - Speichern hakt den Termin ab (bei Sprint, sobald mindestens eine Übung abgehakt ist). Nur Vorkommen bis heute lassen sich eintragen/abhaken.
+  - Sprint: Übungen eine pro Zeile (gleiches Feld `f-ex` wie Krafttraining); Knopf „Sprint abhaken“ öffnet pro Übung eine Karte mit **runden Satz-Knöpfen zum einzeln Abhaken** (`.sex`/`.sset`, `sprintHTML`, `sSet`), rechts − / + für die Satzzahl (1–20), oben „x/y“, ganz geschafft = Name durchgestrichen; unten „x von y Sätzen erledigt“. Satzzahl beim Öffnen: vom letzten Mal (`lastSprint`), sonst Zahl vorne im Namen („4× 30 m“, „3x …“), sonst 1. „+ Übung“ (gemeinsamer Block `#w-adder` für Krafttraining und Sprint) fügt eine Übung nur für dieses Workout hinzu. Detail-Fenster zeigt je Übung „x/y“.
+  - Speichern hakt den Termin ab (bei Sprint, sobald mindestens ein Satz abgehakt ist). Nur Vorkommen bis heute lassen sich eintragen/abhaken.
 - Weiter: wiederkehrende Termine (täglich/wöchentlich/2-wöchentlich, Wochentage, Enddatum, Ausnahmen pro Vorkommen), Bemerkungen, beliebige Dauer, .ics-Import, Orte & Wegzeiten, helles/dunkles Design, Offline-Puffer und Abgleich zwischen Geräten.
 
 ## Technik
@@ -79,12 +79,12 @@ Wichtige Stellen in `app.js`: `normalize` (Migrationen), `buildEV` (Einzeltermin
   - `rec` = `{freq:'daily'|'weekly'|'biweekly', days:[0-6]|null, until:Tagesnummer|null}`; `ex` = Ausnahmen `{[Tagesnummer]: 'skip' | {day,start}}`.
   - `uid` nur bei importierten Terminen (erneuter Import aktualisiert statt zu verdoppeln).
   - `done` = erledigte Vorkommen `{[Vorkommen]: 1}`.
-  - `track` = `'gym'` | `'run'` | `'sprint'` | fehlt. `exercises` = Übungsnamen. `wlog` = `{[Vorkommen]: {[Übung]: [{reps, kg}, …]}}` (ein Eintrag pro Satz). `rlog` = `{[Vorkommen]: {km, sec, kind?}}` (`kind` = Art des Laufs, seit 19.11.). `slog` = `{[Vorkommen]: [abgehakte Übungsnamen]}` (Sprint).
+  - `track` = `'gym'` | `'run'` | `'sprint'` | fehlt. `exercises` = Übungsnamen. `wlog` = `{[Vorkommen]: {[Übung]: [{reps, kg}, …]}}` (ein Eintrag pro Satz). `rlog` = `{[Vorkommen]: {km, sec, kind?}}` (`kind` = Art des Laufs, seit 19.11.). `slog` = `{[Vorkommen]: {[Übung]: [true|false je Satz]}}` (Sprint).
   - `fromTodo`, `due` bei Terminen, die aus einem To-do entstanden sind.
 - `todos`: `[{id,title,cat,dur,due}]` (`due` = Tagesnummer oder null).
 - `trackers`: `{gym, run, sprint}` (Standard alle an; fehlendes `sprint` ergänzt `normalize` mit an).
 - Weitere Felder: `hidden` (Filter), `buffer`, `lockMode`, `sleep`, `nextId`.
-- Migrationen in `normalize`: früheres `event.habit` → `cat.habit`; Termine mit `exercises` ohne `track` → `'gym'`; `wlog` im Zwischenformat `{sets,reps,kg}` → Liste mit entsprechend vielen gleichen Sätzen (seit 19.11. wieder Satzlisten); fehlende `todos`/`trackers` ergänzen.
+- Migrationen in `normalize`: früheres `event.habit` → `cat.habit`; Termine mit `exercises` ohne `track` → `'gym'`; `wlog` im Zwischenformat `{sets,reps,kg}` → Liste mit entsprechend vielen gleichen Sätzen (seit 19.11. wieder Satzlisten); `slog` als Namensliste (erstes Sprint-Format) → `{[Name]: [true]}`; fehlende `todos`/`trackers` ergänzen.
 - Angezeigt und geplant wird mit Einzelterminen der sichtbaren Woche (`buildEV`), ids `"<id>@<tag>"`; Änderungen an Einzelterminen über `setInst`.
 
 ## Entscheidungen von Theo (nicht wieder rückgängig machen ohne Rückfrage)
@@ -95,7 +95,7 @@ Wichtige Stellen in `app.js`: `normalize` (Migrationen), `buildEV` (Einzeltermin
 - Seltene Einstellungen (inkl. Festschreiben, Puffer) gesammelt hinter „Einstellungen“ (17.11.).
 - **Kein inneres Scrollen** des Kalenders; Ausnahme seitliches Scrollen am Handy im Planen-Modus; Alltag am Handy = drei Tage ohne Seitwärts-Scrollen (18.11.).
 - Gewohnheiten pro Kategorie, nicht pro Serie (18.11.).
-- Workout-Tracker **sehr simpel**: nur Übung, Wdh., Gewicht, Vergleich mit letztem Mal; Laufen nur km + Zeit (18.11.), seit 19.11. plus Art des Laufs zum Vergleichen; dritte Art **Sprint** = nur Übungsliste zum Abhaken (19.11.). Seit 19.11. **eine Zeile pro Satz**, damit Gewicht/Wdh. sich zwischen Sätzen unterscheiden können.
+- Workout-Tracker **sehr simpel**: nur Übung, Wdh., Gewicht, Vergleich mit letztem Mal; Laufen nur km + Zeit (18.11.), seit 19.11. plus Art des Laufs zum Vergleichen; dritte Art **Sprint** = Übungen mit Sätzen zum einzeln Abhaken, Übungen auch während des Trainings hinzufügbar (19.11.). Seit 19.11. **eine Zeile pro Satz**, damit Gewicht/Wdh. sich zwischen Sätzen unterscheiden können.
 - Chess.com/Strava-Anbindung besprochen, vorerst nicht gewollt (18.11.). Chess.com ginge über die öffentliche API nur mit Benutzernamen; Strava bräuchte OAuth, ein Strava-Abo und eine Vercel-Funktion für das Client-Secret.
 
 ## Testen

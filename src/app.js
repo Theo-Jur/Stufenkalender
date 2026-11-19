@@ -54,6 +54,8 @@ function normalize(s){
   if(st.trackers.sprint==null) st.trackers.sprint=true;
   st.events.forEach(e=>{
     if(e.exercises&&!e.track) e.track='gym';
+    // Sprint: früher Liste abgehakter Übungen, jetzt {[Übung]: [Satz erledigt?, …]}
+    if(e.slog) Object.keys(e.slog).forEach(o=>{ const v=e.slog[o]; if(Array.isArray(v)){ const m={}; v.forEach(n=>{ if(typeof n==='string') m[n]=[true]; }); e.slog[o]=m; } });
     // Workout-Einträge: jetzt eine Liste einzelner Sätze [{reps,kg}].
     // Ältere Einträge {sets,reps,kg} werden in entsprechend viele gleiche Sätze umgerechnet.
     if(e.wlog) Object.values(e.wlog).forEach(log=>Object.keys(log).forEach(k=>{ const v=log[k];
@@ -263,7 +265,7 @@ function openTodo(tid){
 function syncTodoCat(){const c=state.cats.find(x=>x.id===$('t-cat').value); if(c) $('t-catinfo').textContent=`Stufe ${c.tier} · ${TIERS[c.tier].name}: ${TIERS[c.tier].rule}`;}
 /* ---------- Tracker: Krafttraining und Laufen ----------
    event.track = 'gym' | 'run' | 'sprint' (Art des Termins), an/aus über state.trackers {gym,run,sprint}.
-   Sprint: event.exercises wie beim Krafttraining, event.slog = {[Vorkommen]: [abgehakte Übungen]} – nur eine Liste zum Abhaken.
+   Sprint: event.exercises wie beim Krafttraining, event.slog = {[Vorkommen]: {[Übung]: [true|false je Satz]}} – Sätze zum Abhaken.
    Krafttraining: event.exercises = ['Kniebeugen', …], event.wlog = {[Vorkommen]: {[Übung]: [{reps,kg}, …]}} (ein Eintrag pro Satz).
    Laufen: event.rlog = {[Vorkommen]: {km, sec, kind?}} (kind = Art des Laufs, z. B. „Long Run“). „Letztes Mal“ = jüngster Eintrag davor (egal welche Serie). */
 const numTxt=n=>String(n).replace('.',',');
@@ -318,6 +320,24 @@ function wexHTML(name,cur,day){
     <div class="wsets">${sets.map((x,j)=>wRow(j,x)).join('')}</div>
     <button type="button" class="linkbtn wadd">+ Satz</button></div>`;
 }
+// Sprint: Satzzahl vom letzten Mal, sonst Zahl vorne im Namen („4× 30 m“), sonst 1
+function lastSprint(name,beforeDay){
+  const key=name.toLowerCase(); let best=null;
+  state.events.forEach(e=>{ if(!e.slog) return;
+    Object.entries(e.slog).forEach(([occ,log])=>{ const day=occDay(e,+occ); if(day>=beforeDay) return;
+      const k=Object.keys(log).find(x=>x.toLowerCase()===key); if(!k) return;
+      if(!best||day>best.day) best={day,name:k,sets:log[k]}; }); });
+  return best;
+}
+function sprintHTML(name,cur,day){
+  let sets=cur&&cur.length?cur:null;
+  if(!sets){ const last=lastSprint(name,day), m=name.match(/^\s*(\d{1,2})\s*[×x*]/i);
+    const n=last?last.sets.length:m?Math.min(20,Math.max(1,+m[1])):1; sets=Array(n).fill(false); }
+  return `<div class="sex" data-name="${esc(name)}"><div class="shead"><span class="sname">${esc(name)}</span><span class="sfrac"></span></div>
+    <div class="ssets">${sets.map((d,i)=>sSet(i,d)).join('')}
+      <span class="sbtns"><button type="button" class="sminus" aria-label="Satz weniger">−</button><button type="button" class="splus" aria-label="Satz mehr">+</button></span></div></div>`;
+}
+const sSet=(i,d)=>`<button type="button" class="sset${d?' on':''}" aria-pressed="${d?'true':'false'}" aria-label="Satz ${i+1}">${d?'✓':i+1}</button>`;
 let wInst=null;
 function openWorkout(inst){
   const s=state.events.find(x=>x.id===inst.sid); if(!s||!trackOn(s)) return; wInst=inst;
@@ -325,11 +345,12 @@ function openWorkout(inst){
   $('w-head').textContent=run?`Lauf: ${s.title}`:sprint?`Sprint: ${s.title}`:`Workout: ${s.title}`;
   $('w-sub').textContent=`${wdl(inst.day)}, ${dtxt(inst.day)}`;
   $('w-gym').hidden=run||sprint; $('w-run').hidden=!run; $('w-sprint').hidden=!sprint; $('r-err').hidden=true;
+  $('w-adder').hidden=run; $('w-newex').hidden=true; $('w-addex').hidden=false; $('w-exname').value='';
+  $('w-exname').placeholder=sprint?'Name der Übung, z. B. 3× 60 m fliegend':'Name der Übung, z. B. Klimmzüge';
   if(sprint){
-    const got=new Set(((s.slog&&s.slog[inst.occ])||[]).map(x=>x.toLowerCase()));
-    const names=[...(s.exercises||[])]; ((s.slog&&s.slog[inst.occ])||[]).forEach(n=>{ if(!names.some(x=>x.toLowerCase()===n.toLowerCase())) names.push(n); });
-    $('s-list').innerHTML=names.map(n=>`<li><label class="scheck"><input type="checkbox" data-name="${esc(n)}"${got.has(n.toLowerCase())?' checked':''}><span>${esc(n)}</span></label></li>`).join('')
-      ||'<li class="qnone">Trag im Termin unter „Übungen“ deine Sprint-Übungen ein (Planen-Modus → Termin antippen).</li>';
+    const cur=(s.slog&&s.slog[inst.occ])||{};
+    const names=[...(s.exercises||[])]; Object.keys(cur).forEach(n=>{ if(!names.some(x=>x.toLowerCase()===n.toLowerCase())) names.push(n); });
+    $('s-list').innerHTML=names.map(n=>sprintHTML(n,cur[n],inst.day)).join('');
     syncSprint(); $('ov-workout').hidden=false; return;
   }
   if(run){
@@ -370,6 +391,12 @@ $('w-cancel').onclick=()=>{$('ov-workout').hidden=true;};
 $('w-addex').onclick=()=>{ $('w-newex').hidden=false; $('w-addex').hidden=true; $('w-exname').focus(); };
 function addExercise(){
   let name=$('w-exname').value.trim().replace(/\s+/g,' '); if(!name){ $('w-exname').focus(); return; }
+  if(!$('w-sprint').hidden){
+    const known=lastSprint(name,wInst.day); name=known?known.name:name[0].toUpperCase()+name.slice(1);
+    const have=[...document.querySelectorAll('#s-list .sex')].find(b=>b.dataset.name.toLowerCase()===name.toLowerCase());
+    if(!have){ $('s-list').insertAdjacentHTML('beforeend',sprintHTML(name,null,wInst.day)); syncSprint(); }
+    $('w-exname').value=''; $('w-newex').hidden=true; $('w-addex').hidden=false; return;
+  }
   const known=lastSets(name,wInst.day); name=known?known.name:name[0].toUpperCase()+name.slice(1); // Schreibweise vom letzten Mal
   const have=[...document.querySelectorAll('#w-list .wex')].find(b=>b.dataset.name.toLowerCase()===name.toLowerCase());
   if(have){ have.querySelector('.wreps').focus(); }
@@ -387,15 +414,26 @@ $('w-list').addEventListener('click',ev=>{
     box.insertAdjacentHTML('beforeend',wRow(rows.length,x)); box.lastElementChild.querySelector('.wreps').focus(); }
   else { del.closest('.wset').remove(); renumber(box); }
 });
-function syncSprint(){ const all=$('s-list').querySelectorAll('input'), on=$('s-list').querySelectorAll('input:checked');
-  $('s-count').textContent=all.length?`${on.length} von ${all.length} erledigt`:''; }
-$('s-list').addEventListener('change',syncSprint);
+function syncSprint(){
+  const all=$('s-list').querySelectorAll('.sset'), on=$('s-list').querySelectorAll('.sset.on');
+  $('s-list').querySelectorAll('.sex').forEach(b=>{ const a=b.querySelectorAll('.sset').length, o=b.querySelectorAll('.sset.on').length;
+    b.querySelector('.sfrac').textContent=`${o}/${a}`; b.classList.toggle('full',a>0&&o===a); });
+  $('s-count').textContent=all.length?`${on.length} von ${all.length} Sätzen erledigt`:'Noch keine Übungen – tippe auf „+ Übung“.'; }
+// Satz antippen = abhaken/zurücknehmen; − / + ändert die Zahl der Sätze
+$('s-list').addEventListener('click',ev=>{
+  const b=ev.target.closest('.sset,.sminus,.splus'); if(!b) return; const box=b.closest('.sex').querySelector('.ssets');
+  if(b.classList.contains('sset')){ const on=!b.classList.contains('on'), i=[...box.querySelectorAll('.sset')].indexOf(b); b.outerHTML=sSet(i,on); }
+  else if(b.classList.contains('splus')){ const n=box.querySelectorAll('.sset').length; if(n<20) box.querySelector('.sbtns').insertAdjacentHTML('beforebegin',sSet(n,false)); }
+  else { const all=box.querySelectorAll('.sset'); if(all.length>1) all[all.length-1].remove(); }
+  syncSprint();
+});
 $('wform').addEventListener('submit',ev=>{
   ev.preventDefault(); const inst=wInst; const s=inst&&state.events.find(x=>x.id===inst.sid); if(!s) return;
   let saved=false;
   if(s.track==='sprint'){
-    const got=[...$('s-list').querySelectorAll('input:checked')].map(x=>x.dataset.name);
-    s.slog=s.slog||{}; if(got.length){ s.slog[inst.occ]=got; saved=true; } else delete s.slog[inst.occ];
+    const log={}; let any=false;
+    $('s-list').querySelectorAll('.sex').forEach(b=>{ const v=[...b.querySelectorAll('.sset')].map(x=>x.classList.contains('on')); log[b.dataset.name]=v; if(v.some(Boolean)) any=true; });
+    s.slog=s.slog||{}; if(any){ s.slog[inst.occ]=log; saved=true; } else delete s.slog[inst.occ];
     if(!Object.keys(s.slog).length) delete s.slog;
   } else if(s.track==='run'){
     const kmT=$('r-km').value.trim(), tT=$('r-time').value.trim();
@@ -420,7 +458,7 @@ $('wform').addEventListener('submit',ev=>{
   $('ov-workout').hidden=true; render(); toast(`${s.track==='run'?'Lauf':s.track==='sprint'?'Sprint-Workout':'Workout'} gespeichert${saved?' – Termin abgehakt':''}.`);
 });
 function trackSummary(e){
-  if(e.track==='sprint'){const g=e.slog&&e.slog[e.occ]; if(!g) return ''; const n=Math.max(g.length,(e.exercises||[]).length); return `${g.length} von ${n} erledigt: ${g.map(esc).join(', ')}`;}
+  if(e.track==='sprint'){const g=e.slog&&e.slog[e.occ]; if(!g) return ''; return Object.entries(g).map(([n,v])=>`${esc(n)}: ${v.filter(Boolean).length}/${v.length}`).join('<br>');}
   if(e.track==='run'){const r=e.rlog&&e.rlog[e.occ]; return r?`${r.kind?esc(r.kind)+': ':''}${runTxt(r)}`:'';}
   const lg=e.wlog&&e.wlog[e.occ]; return lg?Object.entries(lg).map(([n,v])=>`${esc(n)}: ${gymTxt(v)}`).join('<br>'):'';
 }
