@@ -106,6 +106,9 @@
           <button type="button" class="wbtn" id="wnext" aria-label="Nächste Woche">›</button>
           <button type="button" class="linkbtn" id="wtoday" hidden>Zur aktuellen Woche</button>
         </div>
+        <div class="modesw spansw" id="spansw" role="group" aria-label="Ansicht">
+          <button type="button" data-span="1" aria-pressed="false">Tag</button><button type="button" data-span="3" aria-pressed="false">3 Tage</button><button type="button" data-span="7" aria-pressed="false">Woche</button><button type="button" data-span="m" aria-pressed="false">Monat</button>
+        </div>
         <span class="spacer"></span>
         <span class="view plan-only" id="view"></span>
         <button class="linkbtn plan-only" id="showall" type="button">Alle einblenden</button>
@@ -265,7 +268,7 @@
           <li><b>Stufe 3 · Flexibel</b> (nur Umriss) weicht allem aus.</li>
           <li><b>Kategorie-Knöpfe</b>: Tippen blendet ein oder aus. <b>Lange drücken</b> (am Computer Rechtsklick) zeigt nur diese Kategorie, nochmal lange drücken zeigt wieder alles. Ausgeblendetes blockiert trotzdem Zeit.</li>
           <li><b>Stufen-Kästen</b>: Antippen zeigt nur diese Stufe, ein zweiter Kasten kommt dazu.</li>
-          <li><b>Wochen blättern</b>: mit den Pfeilen ‹ › oder auf dem Handy im Kalender seitlich wischen.</li>
+          <li><b>Ansicht</b>: Über „Tag · 3 Tage · Woche · Monat“ neben der Kalenderwoche wählst du, wie viel du siehst (Planen und Alltag getrennt, pro Gerät gemerkt). Blättern mit den Pfeilen ‹ › oder auf dem Handy seitlich wischen. Im Monat einen Tag antippen öffnet die Tagesansicht.</li>
           <li><b>Neu einplanen</b>: Der Planer verschiebt nichts selbst. Muss etwas ausweichen, landet es in der Ablage über dem Kalender. Zieh es an eine grüne Stelle oder tippe auf den Vorschlag.</li>
           <li><b>Kalender importieren</b> (unter Einstellungen): Termine aus einer .ics-Datei, z. B. deinem Stundenplan. Sie bekommen eine Stufe wie alle anderen Termine.</li>
           <li><b>Wiederkehrend</b> (↻): Beim Anlegen anhaken. Verschiebst du einen Termin einer Serie, gilt das nur für dieses eine Mal.</li>

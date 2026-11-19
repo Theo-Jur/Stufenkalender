@@ -37,9 +37,10 @@ Stand: 19.11.2026 (abends). Diese Notiz soll reichen, um in einem neuen Chat ohn
 
 **Alltag-Modus:** „Jetzt / Als Nächstes“, kleine Stufen-Filter, Kasten „Kurz erledigen“ (To-dos < 30 min), Leiste „Gewohnheiten“, Kalender. Termin antippen = Detail-Fenster mit „Als erledigt markieren“ und ggf. „Workout“ / „Lauf eintragen“.
 
+**Ansicht / Raster (seit 19.11.):** Umschalter `#spansw` „Tag · 3 Tage · Woche · Monat“ in der Leiste neben der KW, in Planen **und** Alltag, pro Gerät (schmal/breit) und Modus gemerkt in `localStorage` `stufenkalender-span` (`spanPref`, `SPAN()`, `setSpan(v, tag?)`). Standard: Handy-Alltag 3 Tage, sonst Woche. 1/3 Tage = Fenster ab `DAY0` (`dayWin()`, `win3()` liefert jetzt SPAN Tage; alter Name `threeDay` = `dayWin`), Pfeile/Wischen = ±1/±3 Tage (`step`). Woche = `VIEW`. **Monat** = `MON {y,m}`, `monthDays()` (Mo vor dem 1. bis So nach Monatsende), eigene Darstellung `renderMonth` (`.grid.month`, Zellen `.mcell[data-mday]`, bis 4 bzw. 3 Termine als `.mev` in Kategoriefarbe/Stufen-Füllung, „+n weitere“, heute rot umrahmt); Tag antippen → Tagesansicht dieses Tages. Plan wird für alle beteiligten Wochen gerechnet (`planWeek`) und zusammengeführt.
+
 **Handy (≤ 700 px):**
-- Alltag: immer **drei Tage** ab `DAY0` (`threeDay()`, `win3()`), Pfeile/Wischen = ±3 Tage, auch über Wochengrenzen; Plan wird pro beteiligter Woche gerechnet (`planWeek`) und zusammengeführt.
-- Planen: **ganze Woche, seitlich scrollbar**; die Tageszeile wird per JS oben gehalten (`stickHead`, CSS-Variable `--dhs`). Wischen blättert erst am Rand die Woche.
+- Woche: **seitlich scrollbar** (`body.scroll7`, gilt in beiden Modi); die Tageszeile wird per JS oben gehalten (`stickHead`, CSS-Variable `--dhs`). Wischen blättert erst am Rand die Woche. Bei 1/3 Tagen und Monat kein Seitwärts-Scrollen.
 - **Kein Fenster-im-Fenster:** `.cal` hat `overflow:clip`, nur die Seite scrollt, Tageszeile `.dh` klebt oben. Einzige Ausnahme: seitliches Scrollen am Handy im Planen-Modus.
 
 **Rückgängig:** Jede echte Datenänderung (Filter zählen nicht) zeigt unten einen Hinweis mit „Rückgängig“ (7 s), am Computer auch Strg+Z. Mechanik: `trackUndo` vergleicht nach jedem `render()` einen Schnappschuss; ein `toast()` im selben Durchlauf bekommt automatisch den Rückgängig-Knopf. Ein Schritt zurück.
@@ -95,7 +96,7 @@ Wichtige Stellen in `app.js`: `normalize` (Migrationen), `buildEV` (Einzeltermin
 - Ganzer Stufen-Kasten anklickbar statt „nur diese Stufe“-Text; Kategorie-Knöpfe ohne Zahlen und „nur“ (17.11.).
 - „+ Termin“ oben neben „Einstellungen“ (Computer), runder Knopf unten rechts (Handy) (17.11.).
 - Seltene Einstellungen (inkl. Festschreiben, Puffer) gesammelt hinter „Einstellungen“ (17.11.).
-- **Kein inneres Scrollen** des Kalenders; Ausnahme seitliches Scrollen am Handy im Planen-Modus; Alltag am Handy = drei Tage ohne Seitwärts-Scrollen (18.11.).
+- **Kein inneres Scrollen** des Kalenders; Ausnahme seitliches Scrollen am Handy in der Wochenansicht (18.11.). Seit 19.11. ist die Ansicht (Tag/3 Tage/Woche/Monat) frei wählbar, Handy-Alltag startet mit 3 Tagen.
 - Gewohnheiten pro Kategorie, nicht pro Serie (18.11.).
 - Workout-Tracker **sehr simpel**: nur Übung, Wdh., Gewicht, Vergleich mit letztem Mal; Laufen nur km + Zeit (18.11.), seit 19.11. plus Art des Laufs zum Vergleichen; dritte Art **Sprint** = Übungen mit Sätzen zum einzeln Abhaken, Übungen auch während des Trainings hinzufügbar (19.11.). Seit 19.11. **eine Zeile pro Satz**, damit Gewicht/Wdh. sich zwischen Sätzen unterscheiden können.
 - **Termin-Fenster aufgeräumt** (19.11.): keine Beispiel-Texte in Titel und Bemerkung (leere Felder), keine Dauer-Vorschlagsknöpfe (nur Std./Min.), die drei Häkchen „Wiederkehrender Termin“, „Festschreiben“, „Gewohnheit verfolgen“ zusammen in einem Kasten (`.recbox.checks`) mit kurzen Texten. Bei neuem Termin ist die **Kategorie leer** (verstecktes leeres `<option>`), Speichern ohne Kategorie → „Wähle eine Kategorie.“; leere `.catinfo`-Zeilen sind ausgeblendet. Nicht wieder mit Erklärtexten vollstopfen.
@@ -117,7 +118,7 @@ npm run build
 - Die App rechnet mit dem echten heutigen Datum; Testtermine relativ dazu wählen. Standard-Kategorien-ids: `uni`, `ges`, `job` (Stufe 1), `lern` (2), `train`, `freunde` (3).
 
 ## Bekannte Grenzen / mögliche nächste Schritte
-- Planer prüft nur die angezeigte Woche.
+- Planer rechnet wochenweise (jede angezeigte Woche für sich, im Monat bis zu 6 Wochen).
 - .ics-Import ist einmalig (kein laufender Abgleich mit Google/Apple).
 - To-dos (besprochen, noch offen): Hinweis, wenn die Frist näher rückt und kein Zeitblock geplant ist; eingeplante, nicht abgehakte To-dos nach ihrer Zeit zurück in die Ablage.
 - Fortschritt (19.11. eingebaut): mögliche Erweiterungen nur auf Wunsch (z. B. Zeitraum wählen, Distanz statt Tempo, Sprint-Verlauf).

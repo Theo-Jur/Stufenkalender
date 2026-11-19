@@ -20,10 +20,23 @@ let VIEW=CURWEEK; // angezeigte Woche
 const weekDays=()=>[0,1,2,3,4,5,6].map(i=>VIEW*7+i);
 let mode='plan';
 const narrow=matchMedia('(max-width:700px)');
-// Handy im Alltag-Modus: immer drei Tage nebeneinander (ab DAY0), blättern in 3-Tage-Schritten – auch über Wochengrenzen
+/* Ansicht (Raster): 1 Tag, 3 Tage, Woche (7) oder Monat ('m') – wählbar in der Leiste, pro Gerät und Modus gemerkt.
+   1/3 Tage: Fenster ab DAY0, blättern in 1-/3-Tage-Schritten (auch über Wochengrenzen).
+   Woche: VIEW (Montag-Woche). Monat: MON = {y,m}, Raster von Montag vor dem 1. bis Sonntag nach dem Monatsende. */
 let DAY0=TODAY;
-const threeDay=()=>narrow.matches&&mode==='daily'; // Handy im Alltag: drei Tage; im Planen ganze Woche, seitlich scrollbar
-const win3=()=>[DAY0,DAY0+1,DAY0+2];
+const SPANS=[[1,'Tag'],[3,'3 Tage'],[7,'Woche'],['m','Monat']];
+let spanPref={}; try{spanPref=JSON.parse(localStorage.getItem('stufenkalender-span')||'{}')||{};}catch(e){}
+const spanKey=()=>(narrow.matches?'n-':'w-')+mode;
+const SPAN=()=>{const v=spanPref[spanKey()]; return [1,3,7,'m'].includes(v)?v:(narrow.matches&&mode==='daily'?3:7);};
+const dayWin=()=>SPAN()===1||SPAN()===3;
+const threeDay=dayWin; // alter Name: „Fenster ab DAY0“
+const win3=()=>Array.from({length:SPAN()},(_,i)=>DAY0+i);
+let MON=(()=>{const d=dateOf(TODAY); return {y:d.getFullYear(),m:d.getMonth()};})();
+function monthDays(){
+  const first=dayOfDate(new Date(MON.y,MON.m,1)), last=dayOfDate(new Date(MON.y,MON.m+1,0));
+  const a=first-wdi(first), b=last+(6-wdi(last)); return Array.from({length:b-a+1},(_,i)=>a+i);
+}
+const setMonthOf=d=>{const x=dateOf(d); MON={y:x.getFullYear(),m:x.getMonth()};};
 let START=6*60;
 const TIERS={1:{name:'Fix',rule:'wird nie verschoben'},2:{name:'Wichtig',rule:'weicht nur Stufe 1 aus'},3:{name:'Flexibel',rule:'weicht allem aus'}};
 const COLORS=['blue','orange','violet','green','pink','teal','red','yellow','slate'];
@@ -235,7 +248,7 @@ function renderTodos(){
       <span class="grip">⠿ ZIEHEN</span>
       <button type="button" class="tedit" data-todoedit="${t.id}" title="Bearbeiten">${esc(t.title)}</button>
       <span class="h">${durTxt(t.dur)}${dueTxt}</span>
-      <div class="tacts">${sug?`<button type="button" data-todosug="${t.id}" data-day="${sug.day}" data-start="${sug.start}">Vorschlag: ${wd(sug.day)} ${fmt(sug.start)}</button>`:`<span class="nos">${t.due!=null&&t.due<shownDays()[0]?'Frist liegt vorher':threeDay()?'Kein Platz in diesen Tagen':'Kein Platz in dieser Woche'}</span>`}
+      <div class="tacts">${sug?`<button type="button" data-todosug="${t.id}" data-day="${sug.day}" data-start="${sug.start}">Vorschlag: ${wd(sug.day)} ${fmt(sug.start)}</button>`:`<span class="nos">${t.due!=null&&t.due<shownDays()[0]?'Frist liegt vorher':SPAN()===1?'Kein Platz an diesem Tag':SPAN()===3?'Kein Platz in diesen Tagen':SPAN()==='m'?'Kein Platz in diesem Monat':'Kein Platz in dieser Woche'}</span>`}
         <button type="button" class="tdone" data-tododone="${t.id}" aria-label="${esc(t.title)} als erledigt abhaken" title="Erledigt">✓</button></div>
     </div>`;}).join('');
 }
@@ -690,10 +703,12 @@ function lanes(items){
   items.forEach(it=>{let m=it.lane; items.forEach(o=>{if(o.start<it.start+it.dur&&o.start+o.dur>it.start) m=Math.max(m,o.lane);}); it.cols=m+1;});
 }
 
-function shownDays(){ return threeDay()?win3():weekDays(); }
+function shownDays(){ return dayWin()?win3():SPAN()==='m'?monthDays():weekDays(); }
 function renderGrid(plan){
+  if(SPAN()==='m') return renderMonth(plan);
+  $('grid').classList.remove('month');
   const H=(END-START)*PX, daily=mode==='daily', days=shownDays();
-  const g=$('grid'); g.style.gridTemplateColumns=`52px repeat(${days.length},minmax(0,1fr))`; g.style.minWidth=days.length===7&&narrow.matches?'760px':'0';
+  const g=$('grid'); g.style.gridTemplateColumns=`52px repeat(${days.length},minmax(0,1fr))`; g.style.minWidth=days.length===7&&narrow.matches?'760px':'0'; document.body.classList.toggle('scroll7',days.length===7&&narrow.matches);
   let html='<div class="dh" aria-hidden="true"></div>';
   days.forEach(i=>html+=`<div class="dh${i===TODAY?' today':''}"><div class="d">${wd(i)}</div><div class="n">${dtxt(i)}${i===TODAY?' · heute':''}</div></div>`);
   let times='';
@@ -741,6 +756,24 @@ function renderGrid(plan){
   g.innerHTML=html;
 }
 
+// Monatsansicht: pro Tag bis zu 3 Termine als kleine Balken (Farbe = Kategorie, Füllung = Stufe), Tag antippen = Tagesansicht
+function renderMonth(plan){
+  const days=monthDays(), g=$('grid'), max=narrow.matches?3:4;
+  document.body.classList.remove('scroll7');
+  g.classList.add('month'); g.style.gridTemplateColumns='repeat(7,minmax(0,1fr))'; g.style.minWidth='0';
+  let html=[0,1,2,3,4,5,6].map(i=>`<div class="mh">${DAYS[i]}</div>`).join('');
+  days.forEach(d=>{
+    const x=dateOf(d), inM=x.getMonth()===MON.m;
+    const items=EV.filter(e=>visible(e)&&plan[e.id]&&!plan[e.id].unplaced&&plan[e.id].day===d).sort((a,b)=>plan[a.id].start-plan[b.id].start);
+    const pills=items.slice(0,max).map(e=>{const c=catOf(e), p=plan[e.id];
+      return `<span class="mev ${kc(c)}${p.locked==='past'?' past':''}${isDone(e)?' done':''}"><span class="mt">${narrow.matches?'':fmt(p.start)+' '}</span>${esc(e.title)}</span>`;}).join('');
+    const more=items.length>max?`<span class="mmore">+${items.length-max} weitere</span>`:'';
+    html+=`<button type="button" class="mcell${inM?'':' out'}${d===TODAY?' today':''}" data-mday="${d}" aria-label="${wdl(d)}, ${dtxt(d)}: ${items.length} Termin${items.length===1?'':'e'} – Tag öffnen"><span class="mnum">${x.getDate()}</span>${pills}${more}</button>`;
+  });
+  g.innerHTML=html;
+}
+$('grid').addEventListener('click',ev=>{const c=ev.target.closest('.mcell[data-mday]'); if(!c) return; setSpan(1,+c.dataset.mday);});
+
 /* ---------- Alltag: Als Nächstes + kleine Stufenwahl ---------- */
 function relTime(abs){
   const d=Math.floor(abs/1440), m=abs%1440, nowAbs=TODAY*1440+NOW.min, diff=abs-nowAbs;
@@ -760,10 +793,10 @@ function renderNext(plan){
   const goLine=x=>{const tr=TRAVEL[x.e.id]; if(!tr||!tr.min) return ''; return `<span class="go">Los um ${fmt(tr.leave)} ab ${esc(placeName(tr.from))} (${tr.est?'ca. ':''}${tr.min} min)</span>`;};
   let html=cur.map(x=>card(x,'Jetzt',`bis ${fmt((x.a+x.e.dur)%1440)}`,'now')).join('');
   html+=up.map((x,i)=>card(x,i===0?'Als Nächstes':'Danach',relTime(x.a),'',goLine(x))).join('');
-  if(!cur.length&&!up.length) html=`<div class="nx"><span class="lbl">Als Nächstes</span><span class="tt">${threeDay()?'In den nächsten Tagen steht nichts mehr an.':'Diese Woche steht nichts mehr an.'}</span></div>`;
+  if(!cur.length&&!up.length) html=`<div class="nx"><span class="lbl">Als Nächstes</span><span class="tt">${SPAN()===1?'Heute steht nichts mehr an.':SPAN()===3?'In den nächsten Tagen steht nichts mehr an.':SPAN()==='m'?'Diesen Monat steht nichts mehr an.':'Diese Woche steht nichts mehr an.'}</span></div>`;
   if(PROPS) html+=`<div class="pbanner">${PROPS} Vorschl${PROPS>1?'äge warten':'ag wartet'} auf deine Bestätigung. <button type="button" data-mode="plan">Im Planen-Modus prüfen</button></div>`;
   $('next').innerHTML=html;
-  $('next').hidden=threeDay()?!win3().includes(TODAY):VIEW!==CURWEEK; // Jetzt/Als Nächstes gilt nur, wenn heute zu sehen ist
+  $('next').hidden=!shownDays().includes(TODAY); // Jetzt/Als Nächstes gilt nur, wenn heute zu sehen ist
 }
 function activeTier(){
   const vis=state.cats.filter(c=>!state.hidden[c.id]);
@@ -844,19 +877,40 @@ function renderWeek(){
   const range=a.getMonth()===b.getMonth()?`${a.getDate()}.–${b.getDate()}. ${MONTHS[b.getMonth()]} ${b.getFullYear()}`:`${a.getDate()}. ${MONTHS[a.getMonth()]} – ${b.getDate()}. ${MONTHS[b.getMonth()]} ${b.getFullYear()}`;
   $('weeklabel').textContent=`KW ${isoWeek(a)} · ${range}`;
   $('wtoday').hidden=VIEW===CURWEEK; $('wtoday').textContent='Zur aktuellen Woche';
-  if(threeDay()){
+  if(SPAN()===3){
     const x=dateOf(DAY0), y=dateOf(DAY0+2), kx=isoWeek(x), ky=isoWeek(y);
     $('weeklabel').textContent=`KW ${kx}${ky!==kx?'/'+ky:''} · ${wd(DAY0)} ${x.getDate()}.${x.getMonth()!==y.getMonth()?' '+MONTHS[x.getMonth()].slice(0,3)+'.':''} – ${wd(DAY0+2)} ${y.getDate()}. ${MONTHS[y.getMonth()].slice(0,3)}.`;
     $('wtoday').hidden=DAY0===TODAY; $('wtoday').textContent='Heute';
+  } else if(SPAN()===1){
+    const x=dateOf(DAY0);
+    $('weeklabel').textContent=`${wdl(DAY0)}, ${x.getDate()}. ${MONTHS[x.getMonth()]}${DAY0===TODAY?' · heute':''}`;
+    $('wtoday').hidden=DAY0===TODAY; $('wtoday').textContent='Heute';
+  } else if(SPAN()==='m'){
+    $('weeklabel').textContent=`${MONTHS[MON.m]} ${MON.y}`;
+    const t=dateOf(TODAY); $('wtoday').hidden=t.getFullYear()===MON.y&&t.getMonth()===MON.m; $('wtoday').textContent='Aktueller Monat';
   }
+  document.querySelectorAll('#spansw [data-span]').forEach(b=>b.setAttribute('aria-pressed',String(String(SPAN())===b.dataset.span)));
+  const nm=SPAN()===1?'Tag':SPAN()===3?'3 Tage':SPAN()==='m'?'Monat':'Woche';
+  $('wprev').setAttribute('aria-label','Zurück ('+nm+')'); $('wnext').setAttribute('aria-label','Weiter ('+nm+')');
 }
+function shiftMonth(n){ MON=(()=>{const d=new Date(MON.y,MON.m+n,1); return {y:d.getFullYear(),m:d.getMonth()};})(); prevPlan=null; render(); }
+function step(n){ const s=SPAN(); if(s==='m') shiftMonth(n); else if(s===7) goWeek(VIEW+n); else shiftDays(n*s); }
+// Ansicht wechseln: aktuellen Bezugstag mitnehmen
+function setSpan(v,at){
+  const from=SPAN(), ref=at!=null?at:from==='m'?(dateOf(TODAY).getMonth()===MON.m&&dateOf(TODAY).getFullYear()===MON.y?TODAY:dayOfDate(new Date(MON.y,MON.m,1)))
+    :from===7?(VIEW===CURWEEK?TODAY:VIEW*7):DAY0;
+  spanPref[spanKey()]=v; try{localStorage.setItem('stufenkalender-span',JSON.stringify(spanPref));}catch(e){}
+  if(v==='m') setMonthOf(ref); else if(v===7) VIEW=Math.floor(ref/7); else DAY0=ref;
+  prevPlan=null; render(); window.scrollTo({top:Math.min(window.scrollY,($('grid').getBoundingClientRect().top+window.scrollY)-80)});
+}
+$('spansw').addEventListener('click',ev=>{const b=ev.target.closest('[data-span]'); if(!b) return; setSpan(b.dataset.span==='m'?'m':+b.dataset.span);});
 function shiftDays(n){DAY0+=n; prevPlan=null; render();}
 function goWeek(w){VIEW=w; prevPlan=null; render();}
 // Sorgt dafür, dass Tag d zu sehen ist (Woche bzw. 3-Tage-Fenster am Handy)
-function showDay(d){ if(threeDay()){ if(!win3().includes(d)) DAY0=d; } else if(Math.floor(d/7)!==VIEW) VIEW=Math.floor(d/7); }
-$('wprev').onclick=()=>threeDay()?shiftDays(-3):goWeek(VIEW-1);
-$('wnext').onclick=()=>threeDay()?shiftDays(3):goWeek(VIEW+1);
-$('wtoday').onclick=()=>{if(threeDay()){DAY0=TODAY; prevPlan=null; render();} else goWeek(CURWEEK);};
+function showDay(d){ if(dayWin()){ if(!win3().includes(d)) DAY0=d; } else if(SPAN()==='m'){ if(!monthDays().includes(d)) setMonthOf(d); } else if(Math.floor(d/7)!==VIEW) VIEW=Math.floor(d/7); }
+$('wprev').onclick=()=>step(-1);
+$('wnext').onclick=()=>step(1);
+$('wtoday').onclick=()=>{const s=SPAN(); if(s==='m'){setMonthOf(TODAY); prevPlan=null; render();} else if(s===7) goWeek(CURWEEK); else {DAY0=TODAY; prevPlan=null; render();}};
 // Plan einer ganzen Woche (der Planer arbeitet immer wochenweise)
 function planWeek(w){
   const keepV=VIEW, keepE=EV; VIEW=w;
@@ -865,8 +919,8 @@ function planWeek(w){
 }
 function render(){
   const wakes=[0,1,2,3,4,5,6].map(wakeOf);
-  if(threeDay()) VIEW=Math.floor(DAY0/7);
-  const weeks=threeDay()?[...new Set(win3().map(d=>Math.floor(d/7)))]:[VIEW];
+  if(dayWin()) VIEW=Math.floor(DAY0/7);
+  const weeks=SPAN()===7?[VIEW]:[...new Set(shownDays().map(d=>Math.floor(d/7)))];
   const plan={}; EV=[]; TRAVEL={};
   weeks.forEach(w=>{const r=planWeek(w); EV.push(...r.ev); Object.assign(plan,r.pl); Object.assign(TRAVEL,r.tr);});
   START=Math.min(6*60,Math.floor(Math.min(...wakes,...EV.map(e=>e.start))/60)*60);
@@ -915,7 +969,7 @@ $('filters').addEventListener('contextmenu',ev=>{const b=ev.target.closest('[dat
 // am oberen Rand, deshalb wird sie beim Scrollen der Seite mitgeschoben.
 function stickHead(){
   const cal=document.querySelector('.cal'), g=$('grid'); if(!cal||!g) return;
-  if(!(narrow.matches&&mode==='plan')){ g.style.removeProperty('--dhs'); return; }
+  if(!(narrow.matches&&SPAN()===7)){ g.style.removeProperty('--dhs'); return; }
   const r=cal.getBoundingClientRect(), h=(g.querySelector('.dh')||{offsetHeight:0}).offsetHeight;
   g.style.setProperty('--dhs', Math.max(0,Math.min(-r.top, r.height-h-40))+'px');
 }
@@ -934,7 +988,7 @@ addEventListener('scroll',stickHead,{passive:true}); addEventListener('resize',s
     const t=ev.changedTouches[0], dx=t.clientX-sw.x, dy=t.clientY-sw.y, ms=Date.now()-sw.t; const s0=sw; sw=null;
     if(Math.abs(dx)<60||Math.abs(dy)>Math.abs(dx)*0.6||ms>700) return;
     const max=cal.scrollWidth-cal.clientWidth;
-    if(threeDay()){ shiftDays(dx<0?3:-3); toast($('weeklabel').textContent); return; }
+    if(SPAN()!==7){ step(dx<0?1:-1); toast($('weeklabel').textContent); return; }
     if(dx<0){ if(max>2&&s0.sl<max-2) return; goWeek(VIEW+1); }
     else { if(max>2&&s0.sl>2) return; goWeek(VIEW-1); const m=cal.scrollWidth-cal.clientWidth; if(m>2) cal.scrollLeft=m; }
     toast($('weeklabel').textContent);
@@ -1044,7 +1098,7 @@ function openForm(iid,preset){
   $('f-head').textContent=e?(e.rec?'Serie bearbeiten':'Termin bearbeiten'):'Neuer Termin';
   $('f-title').value=e?e.title:'';
   fillCatSelect(e?e.cat:'');
-  const defDay=preset?preset.day:threeDay()?(win3().includes(TODAY)?TODAY:DAY0):VIEW===CURWEEK?TODAY:VIEW*7;
+  const defDay=preset?preset.day:shownDays().includes(TODAY)?TODAY:dayWin()?DAY0:SPAN()==='m'?dayOfDate(new Date(MON.y,MON.m,1)):VIEW*7;
   $('f-day').value=isoDate(e?e.day:defDay); $('f-time').value=fmt(e?e.start:preset?preset.start:1080);
   $('f-rec').checked=!!(e&&e.rec); $('f-freq').value=e&&e.rec?e.rec.freq:'weekly';
   $('f-until').value=e&&e.rec&&e.rec.until!=null?isoDate(e.rec.until):'';
@@ -1520,13 +1574,13 @@ document.addEventListener('keydown',ev=>{
 
 /* ---------- Modus ---------- */
 function setMode(m){
-  mode=m==='daily'?'daily':'plan'; if(mode==='daily'){VIEW=CURWEEK; DAY0=TODAY;}
+  mode=m==='daily'?'daily':'plan'; if(mode==='daily'){VIEW=CURWEEK; DAY0=TODAY; setMonthOf(TODAY);}
   try{localStorage.setItem(KEY+'-mode',mode);}catch(e){}
   document.body.classList.toggle('daily',mode==='daily');
   document.querySelectorAll('[data-mode]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.mode===mode)));
   prevPlan=null; render();
 }
-narrow.addEventListener('change',()=>{ if(threeDay()) DAY0=VIEW===CURWEEK?TODAY:VIEW*7; prevPlan=null; render(); });
+narrow.addEventListener('change',()=>{ if(dayWin()) DAY0=VIEW===CURWEEK?TODAY:VIEW*7; prevPlan=null; render(); });
 setInterval(()=>{const n=new Date(); if(dayOfDate(n)!==NOW.day){location.reload();return;} NOW.min=n.getHours()*60+n.getMinutes(); if(mode==='daily') render();},60000);
 
 /* ---------- Orte & Wege ---------- */

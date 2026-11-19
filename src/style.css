@@ -263,8 +263,8 @@ h1{font-family:var(--f-display);font-weight:700;font-size:30px;letter-spacing:-.
 .cal{background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:clip;min-width:0}
 /* Ausnahme auf Theos Wunsch: am Handy im Planen-Modus ganze Woche, seitlich scrollbar (Tageszeile per JS: --dhs) */
 @media (max-width:700px){
-  body:not(.daily) .cal{overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch}
-  body:not(.daily) .grid .dh{transform:translateY(var(--dhs,0px))}
+  body.scroll7 .cal{overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch}
+  body.scroll7 .grid .dh{transform:translateY(var(--dhs,0px))}
 }
 .grid{display:grid;grid-template-columns:52px repeat(7,minmax(0,1fr))}
 .dh{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--surface);border-bottom:1px solid var(--line);padding:10px 8px 8px;text-align:center}
@@ -684,3 +684,25 @@ aside{position:sticky;top:12px}
 /* Farbauswahl in „Kategorien verwalten“ */
 .cswatches{grid-column:1 / -1;display:flex;flex-wrap:wrap;gap:6px}
 .sw span{background:var(--cf)}
+
+/* Ansicht wählen: Tag / 3 Tage / Woche / Monat */
+.spansw button{padding:5px 12px;font-size:13px}
+@media (max-width:700px){.spansw{order:5;flex-basis:100%;justify-content:space-between}.spansw button{flex:1;padding:6px 4px}}
+/* Monatsansicht */
+.grid.month{gap:0}
+.grid.month .mh{padding:8px 4px;text-align:center;font-size:12px;font-weight:600;color:var(--muted);border-bottom:1px solid var(--line)}
+.mcell{all:unset;box-sizing:border-box;display:flex;flex-direction:column;gap:3px;min-height:104px;padding:5px 5px 6px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);cursor:pointer;min-width:0;position:relative}
+.mcell:nth-child(7n+7){border-right:0}
+.mcell:hover{background:var(--today)}
+.mcell:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.mcell.out{background:var(--bg)}
+.mcell.out .mnum,.mcell.out .mev{opacity:.5}
+.mnum{font-size:12.5px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--fg);align-self:flex-start;min-width:22px;height:22px;line-height:22px;text-align:center;border-radius:999px}
+.mcell.today .mnum{background:var(--accent);color:var(--accent-fg)}
+.mcell.today::after{content:"";position:absolute;inset:0;border:2px solid var(--accent);pointer-events:none}
+.mev{display:block;font-size:11.5px;font-weight:600;line-height:1.35;padding:1px 5px;border-radius:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:var(--tfill);color:var(--tink);border:1.5px solid var(--tedge)}
+.mev .mt{font-weight:500;font-variant-numeric:tabular-nums}
+.mev.past{opacity:.55}
+.mev.done{text-decoration:line-through}
+.mmore{font-size:11px;color:var(--muted);padding-left:3px}
+@media (max-width:700px){.mcell{min-height:78px;padding:3px 2px 4px}.mev{font-size:10.5px;padding:0 3px;border-width:1px}.mnum{font-size:11.5px;min-width:20px;height:20px;line-height:20px}}
