@@ -616,3 +616,4 @@ aside{position:sticky;top:12px}
 .recbox.checks .check{font-size:14px}
 .recbox.checks .check input{width:18px;height:18px;margin:0;flex:none}
 .recbox.checks .recopts{padding:2px 0 4px 26px}
+.catinfo:empty{display:none}

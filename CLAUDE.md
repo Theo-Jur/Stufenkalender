@@ -97,7 +97,7 @@ Wichtige Stellen in `app.js`: `normalize` (Migrationen), `buildEV` (Einzeltermin
 - **Kein inneres Scrollen** des Kalenders; Ausnahme seitliches Scrollen am Handy im Planen-Modus; Alltag am Handy = drei Tage ohne Seitwärts-Scrollen (18.11.).
 - Gewohnheiten pro Kategorie, nicht pro Serie (18.11.).
 - Workout-Tracker **sehr simpel**: nur Übung, Wdh., Gewicht, Vergleich mit letztem Mal; Laufen nur km + Zeit (18.11.), seit 19.11. plus Art des Laufs zum Vergleichen; dritte Art **Sprint** = Übungen mit Sätzen zum einzeln Abhaken, Übungen auch während des Trainings hinzufügbar (19.11.). Seit 19.11. **eine Zeile pro Satz**, damit Gewicht/Wdh. sich zwischen Sätzen unterscheiden können.
-- **Termin-Fenster aufgeräumt** (19.11.): keine Beispiel-Texte in Titel und Bemerkung (leere Felder), keine Dauer-Vorschlagsknöpfe (nur Std./Min.), die drei Häkchen „Wiederkehrender Termin“, „Festschreiben“, „Gewohnheit verfolgen“ zusammen in einem Kasten (`.recbox.checks`) mit kurzen Texten. Nicht wieder mit Erklärtexten vollstopfen.
+- **Termin-Fenster aufgeräumt** (19.11.): keine Beispiel-Texte in Titel und Bemerkung (leere Felder), keine Dauer-Vorschlagsknöpfe (nur Std./Min.), die drei Häkchen „Wiederkehrender Termin“, „Festschreiben“, „Gewohnheit verfolgen“ zusammen in einem Kasten (`.recbox.checks`) mit kurzen Texten. Bei neuem Termin ist die **Kategorie leer** (verstecktes leeres `<option>`), Speichern ohne Kategorie → „Wähle eine Kategorie.“; leere `.catinfo`-Zeilen sind ausgeblendet. Nicht wieder mit Erklärtexten vollstopfen.
 - Chess.com/Strava-Anbindung besprochen, vorerst nicht gewollt (18.11.). Chess.com ginge über die öffentliche API nur mit Benutzernamen; Strava bräuchte OAuth, ein Strava-Abo und eine Vercel-Funktion für das Client-Secret.
 
 ## Testen

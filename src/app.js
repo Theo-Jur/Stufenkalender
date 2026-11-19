@@ -1012,11 +1012,12 @@ $('f-wd').addEventListener('click',ev=>{const b=ev.target.closest('[data-wd]'); 
 ['f-rec','f-freq','f-until','f-day'].forEach(id=>$(id).addEventListener('change',syncRec));
 $('f-day').addEventListener('change',()=>{const d=fromIso($('f-day').value); if(d!=null&&recDays.length<=1) recDays=[wdi(d)]; syncRec();});
 function fillCatSelect(sel){
-  $('f-cat').innerHTML=[1,2,3].map(t=>{const cs=state.cats.filter(c=>c.tier===t); if(!cs.length) return '';
+  // Neuer Termin: Kategorie bleibt leer, bis man eine wählt
+  $('f-cat').innerHTML='<option value="" hidden></option>'+[1,2,3].map(t=>{const cs=state.cats.filter(c=>c.tier===t); if(!cs.length) return '';
     return `<optgroup label="Stufe ${t} · ${TIERS[t].name}">${cs.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('')}</optgroup>`;}).join('');
-  if(sel) $('f-cat').value=sel;
+  $('f-cat').value=sel||'';
 }
-function syncCat(){const c=state.cats.find(x=>x.id===$('f-cat').value); if(!c) return; $('f-lockrow').hidden=c.tier===1;
+function syncCat(){const c=state.cats.find(x=>x.id===$('f-cat').value); if(!c){ $('f-catinfo').textContent=''; $('f-lockrow').hidden=false; $('f-habit').checked=false; return; } $('f-lockrow').hidden=c.tier===1;
   $('f-catinfo').textContent=`Stufe ${c.tier} · ${TIERS[c.tier].name}: ${TIERS[c.tier].rule}`;
   $('f-habit').checked=!!c.habit; }
 $('f-cat').addEventListener('change',syncCat);
@@ -1038,7 +1039,7 @@ function openForm(iid,preset){
   editing=e?e.id:null; editingInst=inst;
   $('f-head').textContent=e?(e.rec?'Serie bearbeiten':'Termin bearbeiten'):'Neuer Termin';
   $('f-title').value=e?e.title:'';
-  fillCatSelect(e?e.cat:(state.cats.find(c=>c.tier===3)||state.cats[0]).id);
+  fillCatSelect(e?e.cat:'');
   const defDay=preset?preset.day:threeDay()?(win3().includes(TODAY)?TODAY:DAY0):VIEW===CURWEEK?TODAY:VIEW*7;
   $('f-day').value=isoDate(e?e.day:defDay); $('f-time').value=fmt(e?e.start:preset?preset.start:1080);
   $('f-rec').checked=!!(e&&e.rec); $('f-freq').value=e&&e.rec?e.rec.freq:'weekly';
@@ -1076,6 +1077,7 @@ $('form').addEventListener('submit',ev=>{
   const err=$('f-err'), fail=m=>{err.textContent=m;err.hidden=false;};
   const title=$('f-title').value.trim(); const [hh,mm]=($('f-time').value||'').split(':').map(Number);
   if(!title) return fail('Gib dem Termin einen Titel.');
+  if(!state.cats.some(x=>x.id===$('f-cat').value)) return fail('Wähle eine Kategorie.');
   if(isNaN(hh)) return fail('Wähle eine Uhrzeit.');
   const cat=$('f-cat').value, c=state.cats.find(x=>x.id===cat), day=fromIso($('f-day').value), start=hh*60+mm, dur=getDur();
   if(day==null) return fail('Wähle ein Datum.');
