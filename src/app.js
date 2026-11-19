@@ -44,13 +44,14 @@ const DEFAULT_TRAVEL=30;
 const pkey=(a,b)=>a<b?a+'|'+b:b+'|'+a;
 function fresh(){return {cats:clone(SEED_CATS),events:[],hidden:{},buffer:15,nextId:100,
   sleep:{mode:'split',wd:{wake:420,bed:1380},we:{wake:540,bed:30},days:null},
-  places:[{id:'home',name:'Zuhause'}],home:'home',travel:{},lockMode:'eve',todos:[],trackers:{gym:true,run:true}};}
+  places:[{id:'home',name:'Zuhause'}],home:'home',travel:{},lockMode:'eve',todos:[],trackers:{gym:true,run:true,sprint:true}};}
 function normalize(s){
   const st=(s&&Array.isArray(s.events)&&Array.isArray(s.cats))?Object.assign(fresh(),clone(s)):fresh();
   // Früher hing „Gewohnheit“ an einzelnen Serien, jetzt an der Kategorie
   st.events.forEach(e=>{ if(e.habit){const c=st.cats.find(x=>x.id===e.cat); if(c) c.habit=true;} delete e.habit; });
   if(!Array.isArray(st.todos)) st.todos=[];
-  if(!st.trackers) st.trackers={gym:true,run:true};
+  if(!st.trackers) st.trackers={gym:true,run:true,sprint:true};
+  if(st.trackers.sprint==null) st.trackers.sprint=true;
   st.events.forEach(e=>{
     if(e.exercises&&!e.track) e.track='gym';
     // Workout-Einträge: jetzt eine Liste einzelner Sätze [{reps,kg}].
@@ -261,7 +262,8 @@ function openTodo(tid){
 }
 function syncTodoCat(){const c=state.cats.find(x=>x.id===$('t-cat').value); if(c) $('t-catinfo').textContent=`Stufe ${c.tier} · ${TIERS[c.tier].name}: ${TIERS[c.tier].rule}`;}
 /* ---------- Tracker: Krafttraining und Laufen ----------
-   event.track = 'gym' | 'run' (Art des Termins), an/aus über state.trackers {gym,run}.
+   event.track = 'gym' | 'run' | 'sprint' (Art des Termins), an/aus über state.trackers {gym,run,sprint}.
+   Sprint: event.exercises wie beim Krafttraining, event.slog = {[Vorkommen]: [abgehakte Übungen]} – nur eine Liste zum Abhaken.
    Krafttraining: event.exercises = ['Kniebeugen', …], event.wlog = {[Vorkommen]: {[Übung]: [{reps,kg}, …]}} (ein Eintrag pro Satz).
    Laufen: event.rlog = {[Vorkommen]: {km, sec, kind?}} (kind = Art des Laufs, z. B. „Long Run“). „Letztes Mal“ = jüngster Eintrag davor (egal welche Serie). */
 const numTxt=n=>String(n).replace('.',',');
@@ -319,10 +321,17 @@ function wexHTML(name,cur,day){
 let wInst=null;
 function openWorkout(inst){
   const s=state.events.find(x=>x.id===inst.sid); if(!s||!trackOn(s)) return; wInst=inst;
-  const run=s.track==='run';
-  $('w-head').textContent=run?`Lauf: ${s.title}`:`Workout: ${s.title}`;
+  const run=s.track==='run', sprint=s.track==='sprint';
+  $('w-head').textContent=run?`Lauf: ${s.title}`:sprint?`Sprint: ${s.title}`:`Workout: ${s.title}`;
   $('w-sub').textContent=`${wdl(inst.day)}, ${dtxt(inst.day)}`;
-  $('w-gym').hidden=run; $('w-run').hidden=!run; $('r-err').hidden=true;
+  $('w-gym').hidden=run||sprint; $('w-run').hidden=!run; $('w-sprint').hidden=!sprint; $('r-err').hidden=true;
+  if(sprint){
+    const got=new Set(((s.slog&&s.slog[inst.occ])||[]).map(x=>x.toLowerCase()));
+    const names=[...(s.exercises||[])]; ((s.slog&&s.slog[inst.occ])||[]).forEach(n=>{ if(!names.some(x=>x.toLowerCase()===n.toLowerCase())) names.push(n); });
+    $('s-list').innerHTML=names.map(n=>`<li><label class="scheck"><input type="checkbox" data-name="${esc(n)}"${got.has(n.toLowerCase())?' checked':''}><span>${esc(n)}</span></label></li>`).join('')
+      ||'<li class="qnone">Trag im Termin unter „Übungen“ deine Sprint-Übungen ein (Planen-Modus → Termin antippen).</li>';
+    syncSprint(); $('ov-workout').hidden=false; return;
+  }
   if(run){
     const cur=s.rlog&&s.rlog[inst.occ];
     // Art vorschlagen: gespeicherte Art, sonst die Art vom letzten Lauf dieses Termins
@@ -378,10 +387,17 @@ $('w-list').addEventListener('click',ev=>{
     box.insertAdjacentHTML('beforeend',wRow(rows.length,x)); box.lastElementChild.querySelector('.wreps').focus(); }
   else { del.closest('.wset').remove(); renumber(box); }
 });
+function syncSprint(){ const all=$('s-list').querySelectorAll('input'), on=$('s-list').querySelectorAll('input:checked');
+  $('s-count').textContent=all.length?`${on.length} von ${all.length} erledigt`:''; }
+$('s-list').addEventListener('change',syncSprint);
 $('wform').addEventListener('submit',ev=>{
   ev.preventDefault(); const inst=wInst; const s=inst&&state.events.find(x=>x.id===inst.sid); if(!s) return;
   let saved=false;
-  if(s.track==='run'){
+  if(s.track==='sprint'){
+    const got=[...$('s-list').querySelectorAll('input:checked')].map(x=>x.dataset.name);
+    s.slog=s.slog||{}; if(got.length){ s.slog[inst.occ]=got; saved=true; } else delete s.slog[inst.occ];
+    if(!Object.keys(s.slog).length) delete s.slog;
+  } else if(s.track==='run'){
     const kmT=$('r-km').value.trim(), tT=$('r-time').value.trim();
     const km=parseFloat(kmT.replace(',','.')), sec=parseRunTime(tT);
     if((kmT&&!(km>0))||(tT&&!(sec>0))){$('r-err').textContent='Gib die Distanz als Zahl (z. B. 5,2) und die Zeit als mm:ss (z. B. 28:30) ein.'; $('r-err').hidden=false; return;}
@@ -401,9 +417,10 @@ $('wform').addEventListener('submit',ev=>{
     if(!Object.keys(s.wlog).length) delete s.wlog;
   }
   if(saved){ s.done=s.done||{}; s.done[inst.occ]=1; }
-  $('ov-workout').hidden=true; render(); toast(`${s.track==='run'?'Lauf':'Workout'} gespeichert${saved?' – Termin abgehakt':''}.`);
+  $('ov-workout').hidden=true; render(); toast(`${s.track==='run'?'Lauf':s.track==='sprint'?'Sprint-Workout':'Workout'} gespeichert${saved?' – Termin abgehakt':''}.`);
 });
 function trackSummary(e){
+  if(e.track==='sprint'){const g=e.slog&&e.slog[e.occ]; if(!g) return ''; const n=Math.max(g.length,(e.exercises||[]).length); return `${g.length} von ${n} erledigt: ${g.map(esc).join(', ')}`;}
   if(e.track==='run'){const r=e.rlog&&e.rlog[e.occ]; return r?`${r.kind?esc(r.kind)+': ':''}${runTxt(r)}`:'';}
   const lg=e.wlog&&e.wlog[e.occ]; return lg?Object.entries(lg).map(([n,v])=>`${esc(n)}: ${gymTxt(v)}`).join('<br>'):'';
 }
@@ -912,7 +929,7 @@ function openForm(iid,preset){
   $('f-ex').value=e&&e.exercises?e.exercises.join('\n'):''; $('f-track').value=e&&e.track?e.track:''; syncTrack();
   $('f-del').hidden=!e; $('f-del').textContent=e&&e.rec?'Ganze Serie löschen':'Löschen';
   $('f-delone').hidden=!(e&&e.rec);
-  $('f-workout').hidden=!(inst&&trackOn(inst)&&inst.day<=TODAY); $('f-workout').textContent=inst&&inst.track==='run'?'Lauf eintragen':'Workout';
+  $('f-workout').hidden=!(inst&&trackOn(inst)&&inst.day<=TODAY); $('f-workout').textContent=inst&&inst.track==='run'?'Lauf eintragen':inst&&inst.track==='sprint'?'Sprint abhaken':'Workout';
   { const show=!!inst&&inst.day<=TODAY; $('f-done').hidden=!show;
     if(show) $('f-done').textContent=isDone(inst)?'✓ Erledigt – zurücknehmen':'Als erledigt markieren'; }
   $('f-err').hidden=true; syncCat(); syncLoc();
@@ -965,7 +982,7 @@ $('form').addEventListener('submit',ev=>{
   const data={title,cat,day,start,dur,loc,note,rec,locked:c.tier!==1&&$('f-locked').checked};
   if(!$('f-trackrow').hidden){ const tr=$('f-track').value; data.track=tr||undefined;
     const exercises=$('f-ex').value.split('\n').map(x=>x.trim()).filter(Boolean).slice(0,30);
-    data.exercises=tr==='gym'&&exercises.length?exercises:undefined; }
+    data.exercises=(tr==='gym'||tr==='sprint')&&exercises.length?exercises:undefined; }
   if($('f-habit').checked) c.habit=true; else delete c.habit;
   if(editing){const i=state.events.findIndex(x=>x.id===editing); state.events[i]=Object.assign({},state.events[i],data,{id:editing}); if(!rec) delete state.events[i].ex;}
   else state.events.push(Object.assign({id:state.nextId++},data));
@@ -1071,23 +1088,23 @@ function openDetail(id){
   $('dt-note').hidden=!e.note; $('dt-note').textContent=e.note||'';
   if(c.habit){const st=habitStats(c.id); $('dt-list').insertAdjacentHTML('beforeend',`<dt>Serie</dt><dd>${esc(c.name)}: ${st.streak} am Stück · Rekord ${st.best}</dd>`);}
   const canDone=p.day<=TODAY; $('dt-done').hidden=!canDone; detailId=id;
-  $('dt-workout').hidden=!(trackOn(e)&&p.day<=TODAY); $('dt-workout').textContent=e.track==='run'?'Lauf eintragen':'Workout';
-  if(trackOn(e)){ const sm=trackSummary(e); if(sm) $('dt-list').insertAdjacentHTML('beforeend',`<dt>${e.track==='run'?'Lauf':'Workout'}</dt><dd>${sm}</dd>`); }
+  $('dt-workout').hidden=!(trackOn(e)&&p.day<=TODAY); $('dt-workout').textContent=e.track==='run'?'Lauf eintragen':e.track==='sprint'?'Sprint abhaken':'Workout';
+  if(trackOn(e)){ const sm=trackSummary(e); if(sm) $('dt-list').insertAdjacentHTML('beforeend',`<dt>${e.track==='run'?'Lauf':e.track==='sprint'?'Sprint':'Workout'}</dt><dd>${sm}</dd>`); }
   if(canDone){const d=isDone(e); $('dt-done').textContent=d?'✓ Erledigt – zurücknehmen':'Als erledigt markieren'; $('dt-done').classList.toggle('on',d);}
   $('ov-detail').hidden=false; setTimeout(()=>$('dt-close').focus(),0);
 }
 $('dt-close').onclick=()=>{$('ov-detail').hidden=true;};
 let detailId=null;
 function syncTrack(){
-  const tr=state.trackers||{}, any=tr.gym||tr.run, cur=$('f-track').value;
+  const tr=state.trackers||{}, any=tr.gym||tr.run||tr.sprint, cur=$('f-track').value;
   $('f-trackrow').hidden=!any&&!cur;
   [...$('f-track').options].forEach(o=>{ if(o.value) o.hidden=!tr[o.value]&&o.value!==cur; });
-  $('f-exrow').hidden=cur!=='gym';
-  $('f-trackinfo').textContent=cur==='gym'?'Beim Termin kannst du dann „Workout“ antippen und für jeden Satz Wdh. und Gewicht eintragen.':cur==='run'?'Beim Termin kannst du dann „Lauf eintragen“ antippen und km und Zeit eintragen.':'';
+  $('f-exrow').hidden=cur!=='gym'&&cur!=='sprint';
+  $('f-trackinfo').textContent=cur==='gym'?'Beim Termin kannst du dann „Workout“ antippen und für jeden Satz Wdh. und Gewicht eintragen.':cur==='run'?'Beim Termin kannst du dann „Lauf eintragen“ antippen und km und Zeit eintragen.':cur==='sprint'?'Beim Termin kannst du dann „Sprint abhaken“ antippen und die Übungen einzeln abhaken.':'';
 }
 $('f-track').addEventListener('change',syncTrack);
-function syncTrackers(){ $('tr-gym').checked=!!state.trackers.gym; $('tr-run').checked=!!state.trackers.run; }
-['gym','run'].forEach(k=>$('tr-'+k).addEventListener('change',()=>{ state.trackers=Object.assign({},state.trackers,{[k]:$('tr-'+k).checked}); render(); }));
+function syncTrackers(){ ['gym','run','sprint'].forEach(k=>$('tr-'+k).checked=!!state.trackers[k]); }
+['gym','run','sprint'].forEach(k=>$('tr-'+k).addEventListener('change',()=>{ state.trackers=Object.assign({},state.trackers,{[k]:$('tr-'+k).checked}); render(); }));
 $('dt-workout').onclick=()=>{const e=EV.find(x=>x.id===detailId); if(!e) return; $('ov-detail').hidden=true; openWorkout(e);};
 $('f-workout').onclick=()=>{const inst=editingInst; if(!inst) return; closeForm(); openWorkout(inst);};
 $('dt-done').onclick=()=>{const e=EV.find(x=>x.id===detailId); if(!e) return; $('ov-detail').hidden=true; toggleDone(e.sid,e.occ);};

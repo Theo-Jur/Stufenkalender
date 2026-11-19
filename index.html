@@ -184,6 +184,7 @@
           <span class="lbl">Tracker</span>
           <label class="themerow" for="tr-gym"><span>Krafttraining <small>Übungen mit Wdh. und Gewicht pro Satz</small></span><input type="checkbox" role="switch" class="switch" id="tr-gym"></label>
           <label class="themerow" for="tr-run"><span>Laufen <small>Kilometer und Zeit</small></span><input type="checkbox" role="switch" class="switch" id="tr-run"></label>
+          <label class="themerow" for="tr-sprint"><span>Sprint <small>Liste der Übungen zum Abhaken</small></span><input type="checkbox" role="switch" class="switch" id="tr-sprint"></label>
         </div>
         <div class="dfoot"><div class="right"><button type="button" class="btn primary" id="set-close">Fertig</button></div></div>
       </div>
@@ -221,6 +222,10 @@
             <button type="button" class="btn primary" id="w-exok">Hinzufügen</button>
           </div>
         </div>
+        <div id="w-sprint" class="wsprint" hidden>
+          <ul class="slist" id="s-list"></ul>
+          <div class="wlast" id="s-count"></div>
+        </div>
         <div id="w-run" class="wrun" hidden>
           <label class="rkindf"><span>Art des Laufs</span><input id="r-kind" placeholder="z. B. Long Run, 5 km" autocomplete="off"></label>
           <div class="rkinds" id="r-kinds"></div>
@@ -253,7 +258,7 @@
           <li><b>Wiederkehrend</b> (↻): Beim Anlegen anhaken. Verschiebst du einen Termin einer Serie, gilt das nur für dieses eine Mal.</li>
           <li><b>Neuer Termin</b>: Tipp auf eine freie Stelle im Kalender – Tag und Uhrzeit sind dann schon eingetragen. Oder nimm den Knopf „+ Termin“.</li>
           <li><b>To-dos</b>: Aufgaben ohne feste Zeit kommen über „+ To-do“ in die Ablage „Zu erledigen“ – mit Dauer, Kategorie und optional „bis wann“. Zieh sie in den Kalender (grün = passt) oder tippe auf den Vorschlag, dann werden sie zum Termin. Mit ✓ hakst du sie direkt ab. Im Alltag-Modus siehst du kurze To-dos (unter 30 min) im Kasten „Kurz erledigen“ und kannst sie dort abhaken.</li>
-          <li><b>Krafttraining und Laufen</b>: Im Termin unter „Art des Termins“ Krafttraining oder Laufen wählen (an- und ausschalten unter Einstellungen → Tracker). Bei Krafttraining trägst du deine Übungen ein (eine pro Zeile). Dann Termin antippen → „Workout“ bzw. „Lauf eintragen“: pro Satz eine Zeile mit Wdh. und Gewicht (mit „+ Satz“ einen weiteren Satz anhängen, mit × einen entfernen; „+ Übung“ fügt für dieses eine Workout eine weitere Übung hinzu) bzw. km und Zeit eintragen, darüber steht jeweils das letzte Mal. Beim Laufen kannst du die <b>Art des Laufs</b> angeben (z. B. Long Run, Recovery Run, 5 km) – verglichen wird dann mit dem letzten Lauf derselben Art. Speichern hakt den Termin ab.</li>
+          <li><b>Krafttraining und Laufen</b>: Im Termin unter „Art des Termins“ Krafttraining, Laufen oder Sprint wählen (an- und ausschalten unter Einstellungen → Tracker). Bei Krafttraining trägst du deine Übungen ein (eine pro Zeile). Dann Termin antippen → „Workout“ bzw. „Lauf eintragen“: pro Satz eine Zeile mit Wdh. und Gewicht (mit „+ Satz“ einen weiteren Satz anhängen, mit × einen entfernen; „+ Übung“ fügt für dieses eine Workout eine weitere Übung hinzu) bzw. km und Zeit eintragen, darüber steht jeweils das letzte Mal. Beim Laufen kannst du die <b>Art des Laufs</b> angeben (z. B. Long Run, Recovery Run, 5 km) – verglichen wird dann mit dem letzten Lauf derselben Art. Bei <b>Sprint</b> trägst du die Übungen ein (eine pro Zeile) und hakst sie über „Sprint abhaken“ einfach einzeln ab. Speichern hakt den Termin ab.</li>
           <li><b>Gewohnheiten</b>: Eine ganze Kategorie (z. B. Training) wird zur Gewohnheit: im Termin-Fenster unter der Kategorie „… als Gewohnheit verfolgen“ anhaken oder unter Einstellungen → Kategorien verwalten. Alle Termine dieser Kategorie zählen zusammen. Im Alltag-Modus siehst du dann deine Serie und kannst mit „Heute abhaken“ erledigen. Jeden Termin kannst du außerdem antippen und als erledigt markieren. Die Serie zählt nur Tage, an denen ein Termin dieser Kategorie geplant ist – Ruhetage brechen sie also nicht.</li>
           <li><b>Rückgängig</b>: Nach jeder Änderung erscheint unten kurz „Rückgängig“ (am Computer auch Strg+Z).</li>
           <li>Jeden Termin kannst du auch direkt im Kalender verschieben, indem du ihn ziehst. Tippen öffnet ihn zum Bearbeiten.</li>
@@ -321,7 +326,7 @@
         <div class="field"><label for="f-note">Bemerkung</label>
           <textarea id="f-note" rows="3" maxlength="1000" placeholder="z. B. Raum S14, Hörsaal C · oder dein Trainingsplan: 3×10 Kniebeugen, 3×8 Bankdrücken …"></textarea></div>
         <div class="field" id="f-trackrow"><label for="f-track">Art des Termins</label>
-          <select id="f-track"><option value="">Normaler Termin</option><option value="gym">Krafttraining</option><option value="run">Laufen</option></select>
+          <select id="f-track"><option value="">Normaler Termin</option><option value="gym">Krafttraining</option><option value="run">Laufen</option><option value="sprint">Sprint</option></select>
           <span class="catinfo" id="f-trackinfo"></span></div>
         <div class="field" id="f-exrow" hidden><label for="f-ex">Übungen (eine pro Zeile)</label>
           <textarea id="f-ex" rows="4" maxlength="1000" placeholder="Kniebeugen&#10;Bankdrücken&#10;Rudern"></textarea></div>
